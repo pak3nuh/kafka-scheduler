@@ -9,19 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>builder</artifactId>
+    <artifactId>api</artifactId>
 
-    <dependencies>
-        <dependency>
-            <groupId>pt.pak3nuh.messaging.kafka</groupId>
-            <artifactId>core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>pt.pak3nuh.messaging.kafka</groupId>
-            <artifactId>api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
 
 </project>
