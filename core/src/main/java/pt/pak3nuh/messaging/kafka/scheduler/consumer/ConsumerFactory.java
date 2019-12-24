@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
+import pt.pak3nuh.messaging.kafka.scheduler.data.InternalMessageSerde;
 
 import java.time.Duration;
 import java.util.Properties;

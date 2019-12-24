@@ -4,11 +4,11 @@ import pt.pak3nuh.messaging.kafka.scheduler.routing.TopicRouter;
 
 import java.time.Instant;
 
-public class SchedulerImpl implements Scheduler, InternalMessageHandler {
+public class RoutingScheduler implements Scheduler, InternalMessageHandler {
 
-    private TopicRouter orchestrator;
+    private final TopicRouter orchestrator;
 
-    public SchedulerImpl(TopicRouter orchestrator) {
+    public RoutingScheduler(TopicRouter orchestrator) {
         this.orchestrator = orchestrator;
     }
 
@@ -22,5 +22,15 @@ public class SchedulerImpl implements Scheduler, InternalMessageHandler {
     public void handle(InternalMessage internalMessage) {
         Topic topic = orchestrator.nextTopic(internalMessage);
         topic.send(internalMessage);
+    }
+
+    @Override
+    public void start() {
+        // noop
+    }
+
+    @Override
+    public void close() {
+        // noop
     }
 }

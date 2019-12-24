@@ -9,11 +9,12 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <groupId>pt.pak3nuh.messaging.kafka.scheduler</groupId>
     <artifactId>core</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>pt.pak3nuh.messaging.kafka</groupId>
+            <groupId>pt.pak3nuh.messaging.kafka.scheduler</groupId>
             <artifactId>api</artifactId>
             <version>${project.version}</version>
         </dependency>

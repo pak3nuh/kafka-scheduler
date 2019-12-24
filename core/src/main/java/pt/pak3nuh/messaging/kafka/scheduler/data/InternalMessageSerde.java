@@ -1,4 +1,4 @@
-package pt.pak3nuh.messaging.kafka.scheduler.consumer;
+package pt.pak3nuh.messaging.kafka.scheduler.data;
 
 import org.apache.kafka.common.serialization.Serde;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;

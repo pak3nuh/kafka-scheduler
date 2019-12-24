@@ -1,11 +1,11 @@
 package pt.pak3nuh.messaging.kafka.scheduler;
 
-import pt.pak3nuh.messaging.kafka.scheduler.consumer.Bytes;
+import pt.pak3nuh.messaging.kafka.scheduler.data.Bytes;
 
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static pt.pak3nuh.messaging.kafka.scheduler.consumer.Bytes.Reader;
+import static pt.pak3nuh.messaging.kafka.scheduler.data.Bytes.Reader;
 
 public final class InternalMessage {
 

@@ -3,6 +3,7 @@ package pt.pak3nuh.messaging.kafka.scheduler;
 import java.util.Objects;
 
 public final class SchedulerTopic {
+    private static final String TOPIC_PREFIX = "kafka-scheduler-internal-seconds-";
     private final int holdValue;
     private final Granularity granularity;
 
@@ -17,6 +18,18 @@ public final class SchedulerTopic {
 
     public Granularity getGranularity() {
         return granularity;
+    }
+
+    public long toSeconds() {
+        switch (granularity) {
+            case MINUTES: return holdValue * 60;
+            case HOURS: return holdValue * 60 * 60;
+        }
+        throw new IllegalArgumentException("Unknown granularity " + granularity);
+    }
+
+    public String topicName() {
+        return TOPIC_PREFIX + toSeconds();
     }
 
     @Override

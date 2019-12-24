@@ -23,7 +23,7 @@ public final class TopicRouterImpl implements TopicRouter {
     public TopicRouterImpl(Set<SchedulerTopic> topics, MessageFailureHandler handler, Producer producer) {
         this.topics = topics.stream()
                 .map(HoldTopic::new)
-                .collect(() -> new TreeSet<HoldTopic>(Comparator.reverseOrder()), TreeSet::add, TreeSet::addAll);
+                .collect(() -> new TreeSet<>(Comparator.reverseOrder()), TreeSet::add, TreeSet::addAll);
         this.handler = handler;
         this.producer = producer;
     }
@@ -59,26 +59,13 @@ public final class TopicRouterImpl implements TopicRouter {
         private final long secondsToHold;
 
         private HoldTopic(SchedulerTopic topic) {
-            this.name = topicName(topic);
-            this.secondsToHold = toSeconds(topic);
-        }
-
-        private long toSeconds(SchedulerTopic topic) {
-            SchedulerTopic.Granularity granularity = topic.getGranularity();
-            switch (granularity) {
-                case MINUTES: return topic.getHoldValue() * 60;
-                case HOURS: return topic.getHoldValue() * 60 * 60;
-            }
-            throw new IllegalArgumentException("Unknown granularity " + granularity);
+            this.name = topic.topicName();
+            this.secondsToHold = topic.toSeconds();
         }
 
         // the topic hold time can't surpass the message hold time
         public boolean canHold(long timeInSeconds) {
             return secondsToHold <= timeInSeconds;
-        }
-
-        private String topicName(SchedulerTopic topic) {
-            return String.format("kafka-scheduler-hold-%d-%s", topic.getHoldValue(), topic.getGranularity());
         }
 
         @Override

@@ -5,7 +5,7 @@ import pt.pak3nuh.messaging.kafka.scheduler.MessageFailureHandler;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerException;
 import pt.pak3nuh.messaging.kafka.scheduler.Topic;
 
-public class FailureTopic implements Topic {
+final class FailureTopic implements Topic {
 
     private final MessageFailureHandler handler;
     private final SchedulerException cause;

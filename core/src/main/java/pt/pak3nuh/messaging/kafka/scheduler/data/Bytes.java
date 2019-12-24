@@ -1,4 +1,4 @@
-package pt.pak3nuh.messaging.kafka.scheduler.consumer;
+package pt.pak3nuh.messaging.kafka.scheduler.data;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
