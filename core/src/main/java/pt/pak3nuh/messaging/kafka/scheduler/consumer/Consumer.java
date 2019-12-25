@@ -9,7 +9,7 @@ import java.time.Instant;
  * <p>This consumer is designed to work with the default threading model for kafka consumer, meaning not concurrent.</p>
  * <p>All the operations submitted to kafka are synchronous.</p>
  */
-public interface Consumer {
+public interface Consumer extends AutoCloseable {
     /**
      * Gets an iterable of records
      */
@@ -26,6 +26,9 @@ public interface Consumer {
      * @param until The time until the partition should be paused
      */
     void pause(Record record, Instant until);
+
+    @Override
+    void close();
 
     interface Record {
         InternalMessage getMessage();

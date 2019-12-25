@@ -88,6 +88,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
                     LOGGER.error("Error doing consumer loop", ex);
                 }
             }
+            consumer.close();
         }
 
         void doConsume() {

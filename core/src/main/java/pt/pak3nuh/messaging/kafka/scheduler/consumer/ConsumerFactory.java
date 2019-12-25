@@ -11,7 +11,7 @@ import java.util.Properties;
 import java.util.function.Supplier;
 
 public class ConsumerFactory implements Supplier<Consumer> {
-    private Properties consumerConfig;
+    private final Properties consumerConfig;
 
     public ConsumerFactory(String servers) {
         this.consumerConfig = new Properties();
@@ -23,6 +23,7 @@ public class ConsumerFactory implements Supplier<Consumer> {
 
     @Override
     public Consumer get() {
+        // todo partition reassignment
         KafkaConsumer<String, InternalMessage> consumer = new KafkaConsumer<>(consumerConfig);
         return new ConsumerImpl(consumer, Duration.ofMinutes(1));
     }

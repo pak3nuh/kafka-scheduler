@@ -83,6 +83,11 @@ final class ConsumerImpl implements Consumer {
         });
     }
 
+    @Override
+    public void close() {
+        consumer.close();
+    }
+
     // todo see Manifold or Lombok for extension methods
     // https://github.com/manifold-systems/manifold/tree/master/manifold-deps-parent/manifold-ext
     private Instant min(Instant stored, Instant until) {
