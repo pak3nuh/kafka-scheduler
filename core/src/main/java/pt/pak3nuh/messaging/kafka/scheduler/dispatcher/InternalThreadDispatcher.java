@@ -104,13 +104,14 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
         private Work splitWork(Iterable<Consumer.Record> records) {
             Work work = new Work();
             // the expected time to iterate this list doesn't justify to calculate this for each record
-            Instant nowWithDelay = Instant.now().minus(config.toSeconds(), ChronoUnit.SECONDS);
+            Instant now = Instant.now();
+            Instant nowWithDelay = now.minus(config.toSeconds(), ChronoUnit.SECONDS);
             records.forEach(record -> {
                 long secondsToRun = secondsUntilRun(record, nowWithDelay);
                 if (secondsToRun <= 0) {
                     work.toProcess.add(record);
                 } else {
-                    Instant until = Instant.now().plusSeconds(secondsToRun);
+                    Instant until = now.plusSeconds(secondsToRun);
                     work.toPause.add(new Tuples.Tuple<>(record, until));
                 }
             });
