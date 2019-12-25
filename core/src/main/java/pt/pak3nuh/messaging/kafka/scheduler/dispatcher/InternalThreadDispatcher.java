@@ -118,7 +118,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
         }
 
         private long secondsUntilRun(Consumer.Record record, Instant nowWithDelay) {
-            Instant shouldRunAt = record.getMessage().shouldRunAt();
+            Instant shouldRunAt = record.getMessage().getShouldRunAt();
             return nowWithDelay.until(shouldRunAt, ChronoUnit.SECONDS);
         }
 

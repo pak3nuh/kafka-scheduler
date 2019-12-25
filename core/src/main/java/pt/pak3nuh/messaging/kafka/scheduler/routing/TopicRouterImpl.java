@@ -31,7 +31,7 @@ public final class TopicRouterImpl implements TopicRouter {
     @Override
     public Topic nextTopic(InternalMessage message) {
         Instant now = Instant.now();
-        Instant messageRunTime = message.shouldRunAt();
+        Instant messageRunTime = message.getShouldRunAt();
         if (messageRunTime.compareTo(now) >= 0) {
             return new SinkTopic(producer, message.getClientMessage().getDestination(), handler);
         }

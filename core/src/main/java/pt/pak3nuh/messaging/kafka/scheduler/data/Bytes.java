@@ -16,6 +16,10 @@ public final class Bytes {
 
         private final List<Value> values;
 
+        /**
+         * Creates an unbounded writer that converts values into a byte representation.
+         * @param placeholders Number of expected placeholders, not a hard limit.
+         */
         public Writer(int placeholders) {
             values = new ArrayList<>(placeholders);
         }
@@ -77,15 +81,17 @@ public final class Bytes {
 
         public Writer putInstant(Instant value) {
             long epochSecond = value.getEpochSecond();
+            int epochNano = value.getNano();
             values.add(new Value() {
                 @Override
                 public int size() {
-                    return Long.BYTES;
+                    return Long.BYTES + Integer.BYTES;
                 }
 
                 @Override
                 public void write(ByteBuffer buffer) {
                     buffer.putLong(epochSecond);
+                    buffer.putInt(epochNano);
                 }
             });
             return this;
@@ -115,7 +121,7 @@ public final class Bytes {
             buffer = ByteBuffer.wrap(bytes);
         }
 
-        public int readInt() {
+        public int getInt() {
             return buffer.getInt();
         }
 
@@ -125,7 +131,8 @@ public final class Bytes {
 
         public Instant getInstant() {
             long epochSecond = buffer.getLong();
-            return Instant.ofEpochSecond(epochSecond);
+            int epochNano = buffer.getInt();
+            return Instant.ofEpochSecond(epochSecond, epochNano);
         }
 
         public String getString() {

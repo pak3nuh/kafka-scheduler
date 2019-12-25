@@ -1,5 +1,7 @@
 package pt.pak3nuh.messaging.kafka.scheduler;
 
+import lombok.Value;
+import pt.pak3nuh.messaging.kafka.scheduler.annotation.VisibleForTesting;
 import pt.pak3nuh.messaging.kafka.scheduler.data.Bytes;
 
 import java.time.Instant;
@@ -7,44 +9,34 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static pt.pak3nuh.messaging.kafka.scheduler.data.Bytes.Reader;
 
+@Value
 public final class InternalMessage {
 
     private static final AtomicLong ID_GEN = new AtomicLong(0);
 
     private final long id;
     private final Instant shouldRunAt;
-    private final ClientMessage message;
+    private final ClientMessage clientMessage;
 
-    public InternalMessage(long id, Instant shouldRunAt, ClientMessage message) {
+    @VisibleForTesting
+    InternalMessage(long id, Instant shouldRunAt, ClientMessage message) {
         this.id = id;
         this.shouldRunAt = shouldRunAt;
-        this.message = message;
+        this.clientMessage = message;
     }
 
     public InternalMessage(Instant shouldRunAt, ClientMessage message) {
         this(ID_GEN.getAndIncrement(), shouldRunAt, message);
     }
 
-    public long getId() {
-        return id;
-    }
-
-    public ClientMessage getClientMessage() {
-        return message;
-    }
-
-    public Instant shouldRunAt() {
-        return shouldRunAt;
-    }
-
     public byte[] toBytes() {
         return new Bytes.Writer(6)
                 .putLong(id)
                 .putInstant(shouldRunAt)
-                .putInstant(message.getCreatedAt())
-                .putString(message.getSource())
-                .putString(message.getDestination())
-                .putBytes(message.getContent())
+                .putInstant(clientMessage.getCreatedAt())
+                .putString(clientMessage.getSource())
+                .putString(clientMessage.getDestination())
+                .putBytes(clientMessage.getContent())
                 .toBytes();
     }
 
