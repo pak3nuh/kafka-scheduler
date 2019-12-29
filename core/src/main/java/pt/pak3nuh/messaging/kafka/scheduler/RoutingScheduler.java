@@ -17,13 +17,18 @@ public class RoutingScheduler implements Scheduler, InternalMessageHandler {
     @Override
     public void enqueue(Instant deliverAt, ClientMessage message) {
         InternalMessage internalMessage = new InternalMessage(deliverAt, message);
-        handle(internalMessage);
+        routeMessage(internalMessage);
     }
 
     @Override
     public void handle(InternalMessage internalMessage) {
-        Topic topic = router.nextTopic(internalMessage);
-        topic.send(internalMessage);
+        InternalMessage newMessage = internalMessage.copy();
+        routeMessage(newMessage);
+    }
+
+    private void routeMessage(InternalMessage newMessage) {
+        Topic topic = router.nextTopic(newMessage);
+        topic.send(newMessage);
     }
 
     @Override

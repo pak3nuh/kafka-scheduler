@@ -15,24 +15,40 @@ public final class InternalMessage {
     private static final AtomicLong ID_GEN = new AtomicLong(0);
 
     private final long id;
+    /**
+     * The delivery time to the final destination.
+     */
     private final Instant deliverAt;
+    /**
+     * The time at which this message was created. Used for intermediary topics.
+     */
+    private final Instant createdAt;
     private final ClientMessage clientMessage;
 
     @VisibleForTesting
-    InternalMessage(long id, Instant deliverAt, ClientMessage message) {
+    InternalMessage(long id, Instant deliverAt, Instant createdAt, ClientMessage message) {
         this.id = id;
         this.deliverAt = deliverAt;
+        this.createdAt = createdAt;
         this.clientMessage = message;
     }
 
     public InternalMessage(Instant deliverAt, ClientMessage message) {
-        this(ID_GEN.getAndIncrement(), deliverAt, message);
+        this(ID_GEN.getAndIncrement(), Instant.now(), deliverAt, message);
+    }
+
+    /**
+     * Creates a new copy of this message with a new creation timestamp.
+     */
+    public InternalMessage copy() {
+        return new InternalMessage(id, deliverAt, Instant.now(), clientMessage);
     }
 
     public byte[] toBytes() {
-        return new Bytes.Writer(6)
+        return new Bytes.Writer(7)
                 .putLong(id)
                 .putInstant(deliverAt)
+                .putInstant(createdAt)
                 .putInstant(clientMessage.getCreatedAt())
                 .putString(clientMessage.getSource())
                 .putString(clientMessage.getDestination())
@@ -44,11 +60,12 @@ public final class InternalMessage {
         Reader reader = new Reader(bytes);
         long id = reader.getLong();
         Instant shouldRunAt = reader.getInstant();
+        Instant holdUntil = reader.getInstant();
         Instant createdAt = reader.getInstant();
         String source = reader.getString();
         String destination = reader.getString();
         byte[] content = reader.getBytes();
-        return new InternalMessage(id, shouldRunAt,
+        return new InternalMessage(id, shouldRunAt, holdUntil,
                 new ClientMessage(createdAt, source, destination, content));
     }
 }

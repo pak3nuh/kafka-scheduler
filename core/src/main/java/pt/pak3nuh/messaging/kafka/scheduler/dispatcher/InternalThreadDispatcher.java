@@ -105,22 +105,23 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
             Work work = new Work();
             // the expected time to iterate this list doesn't justify to calculate this for each record
             Instant now = Instant.now();
+            // avoid calculating the enqueued with delay for each record
             Instant nowWithDelay = now.minus(config.toSeconds(), ChronoUnit.SECONDS);
             records.forEach(record -> {
-                long secondsToRun = secondsUntilRun(record, nowWithDelay);
-                if (secondsToRun <= 0) {
+                // todo check if the timestamps are ok on the intermediate routes
+                long secondsToProcess = secondsUntilProcess(record, nowWithDelay);
+                if (secondsToProcess <= 0) {
                     work.toProcess.add(record);
                 } else {
-                    Instant until = now.plusSeconds(secondsToRun);
+                    Instant until = now.plusSeconds(secondsToProcess);
                     work.toPause.add(new Tuples.Tuple<>(record, until));
                 }
             });
             return work;
         }
 
-        private long secondsUntilRun(Consumer.Record record, Instant nowWithDelay) {
-            Instant shouldRunAt = record.getMessage().getDeliverAt();
-            return nowWithDelay.until(shouldRunAt, ChronoUnit.SECONDS);
+        private long secondsUntilProcess(Consumer.Record record, Instant nowWithDelay) {
+            return nowWithDelay.until(record.getMessage().getCreatedAt(), ChronoUnit.SECONDS);
         }
 
         private static class Work {
