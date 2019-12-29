@@ -2,7 +2,10 @@ package pt.pak3nuh.messaging.kafka.scheduler.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.pak3nuh.messaging.kafka.scheduler.*;
+import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
+import pt.pak3nuh.messaging.kafka.scheduler.MessageFailureHandler;
+import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
+import pt.pak3nuh.messaging.kafka.scheduler.Topic;
 import pt.pak3nuh.messaging.kafka.scheduler.producer.Producer;
 
 import java.time.Instant;
@@ -17,6 +20,7 @@ public final class TopicRouterImpl implements TopicRouter {
     private static final Logger LOGGER = LoggerFactory.getLogger(TopicRouterImpl.class);
     // sorted from the higher hold value to the lower
     private final SortedSet<HoldTopic> topics;
+    private final SinkTopic finerGranularityTopic;
     private final MessageFailureHandler handler;
     private final Producer producer;
 
@@ -26,32 +30,35 @@ public final class TopicRouterImpl implements TopicRouter {
                 .collect(() -> new TreeSet<>(Comparator.reverseOrder()), TreeSet::add, TreeSet::addAll);
         this.handler = handler;
         this.producer = producer;
+        // gets the last value on the sorted set
+        HoldTopic temp = null;
+        for (HoldTopic topic : this.topics) {
+            temp = topic;
+        }
+        finerGranularityTopic = new SinkTopic(producer, temp.name, handler);
     }
 
     @Override
     public Topic nextTopic(InternalMessage message) {
+        LOGGER.debug("Calculating next topic for message {}", message.getId());
         Instant now = Instant.now();
-        Instant messageRunTime = message.getShouldRunAt();
-        if (messageRunTime.compareTo(now) >= 0) {
+        Instant deliverAt = message.getDeliverAt();
+        if (deliverAt.compareTo(now) <= 0) {
+            LOGGER.debug("Wait time expired, message can be delivered.");
             return new SinkTopic(producer, message.getClientMessage().getDestination(), handler);
         }
 
-        long secondsToHold = now.until(messageRunTime, ChronoUnit.SECONDS);
+        long secondsToHold = now.until(deliverAt, ChronoUnit.SECONDS);
         return calculateNextTopic(secondsToHold, message);
     }
 
     private Topic calculateNextTopic(long secondsToHold, InternalMessage message) {
+        LOGGER.debug("Calculating next topic with {} seconds to hold", secondsToHold);
         return topics.stream()
-                .filter(holdTopic -> holdTopic.canHold(secondsToHold) )
+                .filter(holdTopic -> holdTopic.canHold(secondsToHold))
                 .findFirst()
-                .map(holdTopic -> (Topic) new SinkTopic(producer, holdTopic.name, handler))
-                .orElse(failure(secondsToHold, message));
-    }
-
-    private Topic failure(long secondsToHold, InternalMessage message) {
-        LOGGER.error("Couldn't find any suitable topic to hold for {} seconds on message {}", secondsToHold, message);
-        return new FailureTopic(handler,
-                new SchedulerException("Couldn't find any suitable topic to hold for " + secondsToHold + " seconds"));
+                .map(holdTopic -> new SinkTopic(producer, holdTopic.name, handler))
+                .orElse(finerGranularityTopic);
     }
 
     private static class HoldTopic implements Comparable<HoldTopic> {

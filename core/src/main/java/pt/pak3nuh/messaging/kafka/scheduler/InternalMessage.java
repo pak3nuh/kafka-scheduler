@@ -15,24 +15,24 @@ public final class InternalMessage {
     private static final AtomicLong ID_GEN = new AtomicLong(0);
 
     private final long id;
-    private final Instant shouldRunAt;
+    private final Instant deliverAt;
     private final ClientMessage clientMessage;
 
     @VisibleForTesting
-    InternalMessage(long id, Instant shouldRunAt, ClientMessage message) {
+    InternalMessage(long id, Instant deliverAt, ClientMessage message) {
         this.id = id;
-        this.shouldRunAt = shouldRunAt;
+        this.deliverAt = deliverAt;
         this.clientMessage = message;
     }
 
-    public InternalMessage(Instant shouldRunAt, ClientMessage message) {
-        this(ID_GEN.getAndIncrement(), shouldRunAt, message);
+    public InternalMessage(Instant deliverAt, ClientMessage message) {
+        this(ID_GEN.getAndIncrement(), deliverAt, message);
     }
 
     public byte[] toBytes() {
         return new Bytes.Writer(6)
                 .putLong(id)
-                .putInstant(shouldRunAt)
+                .putInstant(deliverAt)
                 .putInstant(clientMessage.getCreatedAt())
                 .putString(clientMessage.getSource())
                 .putString(clientMessage.getDestination())

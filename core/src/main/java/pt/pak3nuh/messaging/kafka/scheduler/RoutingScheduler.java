@@ -6,22 +6,29 @@ import java.time.Instant;
 
 public class RoutingScheduler implements Scheduler, InternalMessageHandler {
 
-    private final TopicRouter orchestrator;
+    private final TopicRouter router;
+    private final long granularity;
 
-    public RoutingScheduler(TopicRouter orchestrator) {
-        this.orchestrator = orchestrator;
+    public RoutingScheduler(TopicRouter router, long granularity) {
+        this.router = router;
+        this.granularity = granularity;
     }
 
     @Override
-    public void enqueue(Instant instant, ClientMessage message) {
-        InternalMessage internalMessage = new InternalMessage(instant, message);
+    public void enqueue(Instant deliverAt, ClientMessage message) {
+        InternalMessage internalMessage = new InternalMessage(deliverAt, message);
         handle(internalMessage);
     }
 
     @Override
     public void handle(InternalMessage internalMessage) {
-        Topic topic = orchestrator.nextTopic(internalMessage);
+        Topic topic = router.nextTopic(internalMessage);
         topic.send(internalMessage);
+    }
+
+    @Override
+    public long granularityInSeconds() {
+        return granularity;
     }
 
     @Override

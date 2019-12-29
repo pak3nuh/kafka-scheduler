@@ -17,7 +17,9 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
-import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.*;
+import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkNotEmpty;
+import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkNotNull;
+import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkPositive;
 
 public final class SchedulerBuilder {
 
@@ -70,39 +72,60 @@ public final class SchedulerBuilder {
                 handler,
                 producer
         );
-        RoutingScheduler routingScheduler = new RoutingScheduler(router);
+        @SuppressWarnings("OptionalGetWithoutIsPresent")
+        long granularity = topics.stream().mapToLong(SchedulerTopic::toSeconds).min().getAsLong();
+        RoutingScheduler routingScheduler = new RoutingScheduler(router, granularity);
         InternalThreadDispatcher dispatcher = new InternalThreadDispatcher(
                 topics,
                 new ConsumerFactory(servers),
                 routingScheduler
         );
-        return new Scheduler() {
-            @Override
-            public void start() {
-                checkServer();
-                dispatcher.start();
-            }
+        return new SchedulerWrapper(producer, dispatcher, servers, routingScheduler);
+    }
 
-            private void checkServer() throws SchedulerException {
-                Properties properties = new Properties();
-                properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-                try (AdminClient client = AdminClient.create(properties)) {
-                    client.describeCluster().clusterId().get();
-                } catch (Exception e) {
-                    throw new SchedulerException(e);
-                }
-            }
+    private static class SchedulerWrapper implements Scheduler {
+        private final Producer producer;
+        private final InternalThreadDispatcher dispatcher;
+        private final String servers;
+        private final RoutingScheduler routingScheduler;
 
-            @Override
-            public void enqueue(Instant instant, ClientMessage message) {
-                routingScheduler.enqueue(instant, message);
-            }
+        public SchedulerWrapper(Producer producer, InternalThreadDispatcher dispatcher, String servers, RoutingScheduler routingScheduler) {
+            this.producer = producer;
+            this.dispatcher = dispatcher;
+            this.servers = servers;
+            this.routingScheduler = routingScheduler;
+        }
 
-            @Override
-            public void close() {
-                dispatcher.close();
-                producer.close();
+        @Override
+        public void start() {
+            checkServer();
+            dispatcher.start();
+        }
+
+        private void checkServer() throws SchedulerException {
+            Properties properties = new Properties();
+            properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
+            try (AdminClient client = AdminClient.create(properties)) {
+                client.describeCluster().clusterId().get();
+            } catch (Exception e) {
+                throw new SchedulerException(e);
             }
-        };
+        }
+
+        @Override
+        public void enqueue(Instant deliverAt, ClientMessage message) {
+            routingScheduler.enqueue(deliverAt, message);
+        }
+
+        @Override
+        public long granularityInSeconds() {
+            return routingScheduler.granularityInSeconds();
+        }
+
+        @Override
+        public void close() {
+            dispatcher.close();
+            producer.close();
+        }
     }
 }
