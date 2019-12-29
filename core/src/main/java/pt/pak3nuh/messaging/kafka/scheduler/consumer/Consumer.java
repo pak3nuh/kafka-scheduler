@@ -21,7 +21,8 @@ public interface Consumer extends AutoCloseable {
     void commit(Record record);
 
     /**
-     * Pauses the source partition of the record until the instant has passed.
+     * <p>Pauses the source partition of the record until the instant has passed on the record's offset.</p>
+     * <p>The next {@link #poll()} after {@code until} has passed, the {@code record} will be returned again.</p>
      * @param record The source record
      * @param until The time until the partition should be paused
      */

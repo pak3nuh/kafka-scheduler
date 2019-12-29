@@ -48,7 +48,7 @@ final class ConsumerImpl implements Consumer {
             PausedTopic pausedTopic = entry.getValue();
             if (min(now, pausedTopic.pausedUntil) != now) {
                 consumer.resume(singleton(entry.getKey()));
-                consumer.seek(entry.getKey(), new OffsetAndMetadata(pausedTopic.offset + 1));
+                consumer.seek(entry.getKey(), new OffsetAndMetadata(pausedTopic.offset));
                 return true;
             }
             return false;

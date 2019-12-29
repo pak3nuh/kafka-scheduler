@@ -10,6 +10,7 @@ import pt.pak3nuh.messaging.kafka.scheduler.producer.Producer;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Set;
 import java.util.SortedSet;
@@ -31,10 +32,7 @@ public final class TopicRouterImpl implements TopicRouter {
         this.handler = handler;
         this.producer = producer;
         // gets the last value on the sorted set
-        HoldTopic temp = null;
-        for (HoldTopic topic : this.topics) {
-            temp = topic;
-        }
+        HoldTopic temp = Collections.min(this.topics);
         finerGranularityTopic = new SinkTopic(producer, temp.name, handler);
     }
 
