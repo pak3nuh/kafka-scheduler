@@ -25,7 +25,6 @@ public final class SchedulerBuilder {
 
     private final Set<SchedulerTopic> topics = new HashSet<>();
     private MessageFailureHandler handler = new LoggingFailureHandler();
-    private Producer producer;
     private String servers;
 
     public SchedulerBuilder(String servers) {
@@ -49,15 +48,7 @@ public final class SchedulerBuilder {
         return this;
     }
 
-    public SchedulerBuilder producer(Producer producer) {
-        this.producer = checkNotNull(producer);
-        return this;
-    }
-
     private Producer getProducer() {
-        if(producer != null)
-            return producer;
-
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
