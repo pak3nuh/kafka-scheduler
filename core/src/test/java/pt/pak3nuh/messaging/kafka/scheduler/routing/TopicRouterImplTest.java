@@ -2,12 +2,13 @@ package pt.pak3nuh.messaging.kafka.scheduler.routing;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.internal.util.collections.Sets;
+import pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 import pt.pak3nuh.messaging.kafka.scheduler.Topic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.createInternalMessage;
+import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create;
 
 class TopicRouterImplTest {
 
@@ -19,9 +20,9 @@ class TopicRouterImplTest {
     void shouldReturnNextValidTopic() {
         TopicRouterImpl router = new TopicRouterImpl(Sets.newSet(fiveMin, fiveHours, tenHours), null, null);
 
-        assertTopic(router.nextTopic(createInternalMessage(10, 0)), fiveMin.toSeconds());
-        assertTopic(router.nextTopic(createInternalMessage(10, 5)), fiveHours.toSeconds());
-        assertTopic(router.nextTopic(createInternalMessage(10, 10)), tenHours.toSeconds());
+        assertTopic(router.nextTopic(InternalMessageFactory.create(10, 0)), fiveMin.toSeconds());
+        assertTopic(router.nextTopic(InternalMessageFactory.create(10, 5)), fiveHours.toSeconds());
+        assertTopic(router.nextTopic(InternalMessageFactory.create(10, 10)), tenHours.toSeconds());
     }
 
     private void assertTopic(Topic topic, long secondsTopic) {
@@ -36,7 +37,7 @@ class TopicRouterImplTest {
     @Test
     void shouldScheduleImmediatelyOnPastMessage() {
         TopicRouterImpl router = new TopicRouterImpl(Sets.newSet(fiveMin), null, null);
-        Topic topic = router.nextTopic(createInternalMessage());
+        Topic topic = router.nextTopic(create());
         assertTrue(topic instanceof SinkTopic);
         String destination = ((SinkTopic) topic).getDestination();
         assertEquals("destination", destination);
@@ -46,7 +47,7 @@ class TopicRouterImplTest {
     void shouldReturnFinerGranularityTopicForCompleteWaits() {
         TopicRouterImpl router = new TopicRouterImpl(Sets.newSet(fiveMin, fiveHours), null, null);
 
-        Topic topic = router.nextTopic(createInternalMessage(1, 0));
+        Topic topic = router.nextTopic(InternalMessageFactory.create(1, 0));
         assertTopic(topic, fiveMin.toSeconds());
     }
 }

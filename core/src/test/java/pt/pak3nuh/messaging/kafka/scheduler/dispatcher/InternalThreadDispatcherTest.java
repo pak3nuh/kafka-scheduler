@@ -10,14 +10,20 @@ import pt.pak3nuh.messaging.kafka.scheduler.consumer.Consumer;
 import pt.pak3nuh.messaging.kafka.scheduler.dispatcher.InternalThreadDispatcher.DispatcherThread;
 import pt.pak3nuh.messaging.kafka.scheduler.mock.Mocking;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.verify;
+import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create;
 import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.createInternalMessageStream;
 
 class InternalThreadDispatcherTest {
@@ -74,6 +80,38 @@ class InternalThreadDispatcherTest {
         // all were paused
         verify(handler, new Times(2)).handle(any(InternalMessage.class));
         verify(consumer, new Times(2)).pause(any(), any());
+    }
+
+    @Test
+    void shouldDelayRespectingTheHoldValue() {
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES), null, null);
+        InternalMessage message = create(0, 0);
+
+        // simulates 4 minutes already passed
+        Instant processTime = message.getCreatedAt().plus(4, ChronoUnit.MINUTES);
+        DispatcherThread.Work work = thread.splitWork(singletonList(new R(message)), processTime);
+
+        assertTrue(work.toProcess.isEmpty());
+        assertEquals(1, work.toPause.size());
+
+        Instant resumeAt = work.toPause.get(0).getRight();
+
+        Instant expectedTimestamp = processTime.plus(1, ChronoUnit.MINUTES);
+        assertEquals(expectedTimestamp, resumeAt);
+    }
+
+
+    @Test
+    void shouldAddToProcessAfterTheHoldTime() {
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES), null, null);
+        InternalMessage message = create(0, 0);
+
+        // simulates 1 ms after hold
+        Instant processTime = message.getCreatedAt().plus(5, ChronoUnit.MINUTES).plusMillis(1);
+        DispatcherThread.Work work = thread.splitWork(singletonList(new R(message)), processTime);
+
+        assertTrue(work.toPause.isEmpty());
+        assertEquals(1, work.toProcess.size());
     }
 
     @Value

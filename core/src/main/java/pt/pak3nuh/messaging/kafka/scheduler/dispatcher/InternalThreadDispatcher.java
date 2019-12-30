@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessageHandler;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
+import pt.pak3nuh.messaging.kafka.scheduler.annotation.VisibleForTesting;
 import pt.pak3nuh.messaging.kafka.scheduler.consumer.Consumer;
 import pt.pak3nuh.messaging.kafka.scheduler.data.Tuples;
 
@@ -91,9 +92,10 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
             consumer.close();
         }
 
+        @VisibleForTesting
         void doConsume() {
             Iterable<Consumer.Record> records = consumer.poll();
-            Work work = splitWork(records);
+            Work work = splitWork(records, Instant.now());
             work.toProcess.forEach(record -> {
                 internalMessageHandler.handle(record.getMessage());
                 consumer.commit(record);
@@ -101,14 +103,12 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
             work.toPause.forEach(tuple -> consumer.pause(tuple.getLeft(), tuple.getRight()));
         }
 
-        private Work splitWork(Iterable<Consumer.Record> records) {
+        @VisibleForTesting
+        Work splitWork(Iterable<Consumer.Record> records, Instant now) {
             Work work = new Work();
-            // the expected time to iterate this list doesn't justify to calculate this for each record
-            Instant now = Instant.now();
             // avoid calculating the enqueued with delay for each record
             Instant nowWithDelay = now.minus(config.toSeconds(), ChronoUnit.SECONDS);
             records.forEach(record -> {
-                // todo check if the timestamps are ok on the intermediate routes
                 long secondsToProcess = secondsUntilProcess(record, nowWithDelay);
                 if (secondsToProcess <= 0) {
                     work.toProcess.add(record);
@@ -124,7 +124,8 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
             return nowWithDelay.until(record.getMessage().getCreatedAt(), ChronoUnit.SECONDS);
         }
 
-        private static class Work {
+        @VisibleForTesting
+        static class Work {
             List<Consumer.Record> toProcess = new ArrayList<>();
             List<Tuples.Tuple<Consumer.Record, Instant>> toPause = new ArrayList<>();
         }

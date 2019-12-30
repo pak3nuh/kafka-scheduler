@@ -29,7 +29,7 @@ class ProducerImplTest {
         org.apache.kafka.clients.producer.Producer<String, InternalMessage> producer =
                 mockStrict(org.apache.kafka.clients.producer.Producer.class);
         willReturn(CompletableFuture.completedFuture(null)).given(producer).send(any());
-        InternalMessage internalMessage = InternalMessageFactory.createInternalMessage();
+        InternalMessage internalMessage = InternalMessageFactory.create();
 
         new ProducerImpl(producer).send("topic", internalMessage);
         ArgumentCaptor<ProducerRecord<String, InternalMessage>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -59,7 +59,7 @@ class ProducerImplTest {
         willReturn(future).given(producer).send(any());
 
         assertThrows(SchedulerException.class,
-                () -> new ProducerImpl(producer).send("", InternalMessageFactory.createInternalMessage()));
+                () -> new ProducerImpl(producer).send("", InternalMessageFactory.create()));
     }
 
 

@@ -11,7 +11,7 @@ class InternalMessageTest {
 
     @Test
     void shouldSerializeAndDeserialize() {
-        InternalMessage original = new InternalMessage(50, Instant.now(),
+        InternalMessage original = new InternalMessage(50, Instant.now(), Instant.now(),
                 new ClientMessage(Instant.now(), "source", "destination", "content".getBytes()));
 
         InternalMessage other = InternalMessage.fromBytes(original.toBytes());

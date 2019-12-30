@@ -12,7 +12,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
-import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.createInternalMessage;
+import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create;
 import static pt.pak3nuh.messaging.kafka.scheduler.mock.Mocking.mockStrict;
 
 class SinkTopicTest {
@@ -21,7 +21,7 @@ class SinkTopicTest {
     void shouldDelegateToProducerOnSuccess() {
         Producer producer = mockStrict(Producer.class);
         willDoNothing().given(producer).send(any(), any());
-        InternalMessage internalMessage = createInternalMessage();
+        InternalMessage internalMessage = create();
 
         new SinkTopic(producer, "destination", null).send(internalMessage);
 
@@ -33,7 +33,7 @@ class SinkTopicTest {
         Producer producer = mockStrict(Producer.class);
         willThrow(new RuntimeException()).given(producer).send(any(), any());
         MessageFailureHandler handler = mockStrict(MessageFailureHandler.class);
-        InternalMessage internalMessage = createInternalMessage();
+        InternalMessage internalMessage = create();
         willDoNothing().given(handler).handle(any(ClientMessage.class), any(SchedulerException.class));
 
         new SinkTopic(producer, "destination", handler).send(internalMessage);

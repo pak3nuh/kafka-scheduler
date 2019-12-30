@@ -18,7 +18,7 @@ import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.createInternalMessage;
+import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create;
 
 class ConsumerImplTest {
 
@@ -93,7 +93,7 @@ class ConsumerImplTest {
     }
 
     private void addRecord() {
-        mock.addRecord(new ConsumerRecord<>(TOPIC, PARTITION, offset++, "key", createInternalMessage()));
+        mock.addRecord(new ConsumerRecord<>(TOPIC, PARTITION, offset++, "key", create()));
     }
 
 }
