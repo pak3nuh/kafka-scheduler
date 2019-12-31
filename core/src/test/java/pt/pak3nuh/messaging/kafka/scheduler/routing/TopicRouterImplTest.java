@@ -12,9 +12,10 @@ import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create
 
 class TopicRouterImplTest {
 
-    private final SchedulerTopic fiveMin = new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES);
-    private final SchedulerTopic fiveHours = new SchedulerTopic(5, SchedulerTopic.Granularity.HOURS);
-    private final SchedulerTopic tenHours = new SchedulerTopic(10, SchedulerTopic.Granularity.HOURS);
+    private static final String APP_NAME = "app-name";
+    private final SchedulerTopic fiveMin = new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES, APP_NAME);
+    private final SchedulerTopic fiveHours = new SchedulerTopic(5, SchedulerTopic.Granularity.HOURS, APP_NAME);
+    private final SchedulerTopic tenHours = new SchedulerTopic(10, SchedulerTopic.Granularity.HOURS, APP_NAME);
 
     @Test
     void shouldReturnNextValidTopic() {

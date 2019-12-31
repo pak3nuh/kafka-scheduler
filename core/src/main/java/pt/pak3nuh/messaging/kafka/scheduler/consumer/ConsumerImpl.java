@@ -5,7 +5,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
+import pt.pak3nuh.messaging.kafka.scheduler.util.Check;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,9 +22,10 @@ import static java.util.Collections.singleton;
 
 final class ConsumerImpl implements Consumer {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerImpl.class);
     private final org.apache.kafka.clients.consumer.Consumer<String, InternalMessage> consumer;
     private final Duration pollTimeout;
-    private final Map<TopicPartition, PausedTopic> pausedPartitions = new HashMap<>();
+    private final Map<TopicPartition, PausedTopic> pausedPartitionsTimeout = new HashMap<>();
 
     ConsumerImpl(org.apache.kafka.clients.consumer.Consumer<String, InternalMessage> consumer,
                  Duration pollTimeout) {
@@ -43,15 +47,22 @@ final class ConsumerImpl implements Consumer {
     }
 
     private void maybeResumePartitions() {
+        /*
+        Kafka consumer maintains the subscription state even if the partitions is no longer assigned.
+        That means we only want to preform operations on assigned partitions or else the pause/resume will fail.
+        We can hold the paused timeout for a partition as long as needed, but only operate on it when is assigned
+        */
         Instant now = Instant.now();
-        pausedPartitions.entrySet().removeIf(entry -> {
-            PausedTopic pausedTopic = entry.getValue();
-            if (min(now, pausedTopic.pausedUntil) != now) {
-                consumer.resume(singleton(entry.getKey()));
-                consumer.seek(entry.getKey(), new OffsetAndMetadata(pausedTopic.offset));
-                return true;
+        consumer.assignment().forEach(assigned -> {
+            PausedTopic pausedTopic = pausedPartitionsTimeout.get(assigned);
+            LOGGER.trace("PausedTopic {} for partition {}", pausedTopic, assigned);
+            if (null != pausedTopic) {
+                if (min(now, pausedTopic.pausedUntil) != now) {
+                    LOGGER.debug("Resuming partition {} and preform seek {} due to timeout", assigned, pausedTopic.offset);
+                    consumer.resume(singleton(assigned));
+                    consumer.seek(assigned, new OffsetAndMetadata(pausedTopic.offset));
+                }
             }
-            return false;
         });
     }
 
@@ -61,7 +72,8 @@ final class ConsumerImpl implements Consumer {
 
     @Override
     public void commit(Record record) {
-        R r = ((R) record);
+        Check.check(record instanceof R, "Unknown record type");
+        R r = (R) record;
         TopicPartition topicPartition = new TopicPartition(r.getTopic(), r.getPartition());
         consumer.commitSync(Collections.singletonMap(
                 topicPartition,
@@ -74,7 +86,7 @@ final class ConsumerImpl implements Consumer {
         TopicPartition topicPartition = new TopicPartition(r.topic, r.partition);
         PausedTopic pausedTopic = new PausedTopic(r.offset, until);
         // should save the minimum offset (and instant by adjacency)
-        pausedPartitions.compute(topicPartition, (key, stored) -> {
+        pausedPartitionsTimeout.compute(topicPartition, (key, stored) -> {
             if (stored == null) {
                 consumer.pause(singleton(key));
                 return pausedTopic;
@@ -108,7 +120,7 @@ final class ConsumerImpl implements Consumer {
         private final Instant pausedUntil;
 
         public PausedTopic min(PausedTopic other) {
-            if(offset <= other.offset) return this;
+            if (offset <= other.offset) return this;
             return other;
         }
     }

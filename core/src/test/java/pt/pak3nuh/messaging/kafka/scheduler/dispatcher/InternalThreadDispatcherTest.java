@@ -28,6 +28,7 @@ import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create
 
 class InternalThreadDispatcherTest {
 
+    private static final String APP_NAME = "app-name";
     private Consumer consumer = Mocking.mockStrict(Consumer.class);
     private InternalMessageHandler handler = Mocking.mockStrict(InternalMessageHandler.class);
 
@@ -41,7 +42,7 @@ class InternalThreadDispatcherTest {
     void shouldConsumerRecords() {
         int delay = 1;
         int numberOfRecords = 5;
-        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES), consumer, handler);
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES, APP_NAME), consumer, handler);
         List<R> recordList = createInternalMessageStream(numberOfRecords, -delay).map(R::new).collect(Collectors.toList());
         willReturn(recordList).given(consumer).poll();
 
@@ -56,7 +57,7 @@ class InternalThreadDispatcherTest {
     void shouldPausePartitions() {
         int delay = 1;
         int numberOfRecords = 5;
-        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES), consumer, handler);
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES, APP_NAME), consumer, handler);
         List<R> recordList = createInternalMessageStream(numberOfRecords, 0).map(R::new).collect(Collectors.toList());
         willReturn(recordList).given(consumer).poll();
 
@@ -70,7 +71,7 @@ class InternalThreadDispatcherTest {
     @Test
     void shouldConsumeSomeAndPauseSome() {
         int delay = 1;
-        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES), consumer, handler);
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(delay, SchedulerTopic.Granularity.MINUTES, APP_NAME), consumer, handler);
         Stream<R> toConsume = createInternalMessageStream(2, -delay).map(R::new);
         Stream<R> toPause = createInternalMessageStream(2, 0).map(R::new);
         willReturn(Stream.concat(toConsume, toPause).collect(Collectors.toList())).given(consumer).poll();
@@ -84,7 +85,7 @@ class InternalThreadDispatcherTest {
 
     @Test
     void shouldDelayRespectingTheHoldValue() {
-        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES), null, null);
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES, APP_NAME), null, null);
         InternalMessage message = create(0, 0);
 
         // simulates 4 minutes already passed
@@ -103,7 +104,7 @@ class InternalThreadDispatcherTest {
 
     @Test
     void shouldAddToProcessAfterTheHoldTime() {
-        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES), null, null);
+        DispatcherThread thread = new DispatcherThread(new SchedulerTopic(5, SchedulerTopic.Granularity.MINUTES, APP_NAME), null, null);
         InternalMessage message = create(0, 0);
 
         // simulates 1 ms after hold

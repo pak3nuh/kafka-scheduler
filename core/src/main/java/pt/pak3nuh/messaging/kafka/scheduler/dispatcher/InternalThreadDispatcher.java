@@ -15,16 +15,17 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 public final class InternalThreadDispatcher implements InternalDispatcher {
 
     private final Set<SchedulerTopic> topicConfigSet;
     private final List<DispatcherThread> threads;
-    private final Supplier<Consumer> consumerFactory;
+    private final Function<SchedulerTopic, Consumer> consumerFactory;
     private final InternalMessageHandler internalMessageHandler;
 
-    public InternalThreadDispatcher(Set<SchedulerTopic> topicConfigSet, Supplier<Consumer> consumerFactory,
+    public InternalThreadDispatcher(Set<SchedulerTopic> topicConfigSet,
+                                    Function<SchedulerTopic, Consumer> consumerFactory,
                                     InternalMessageHandler internalMessageHandler) {
         this.topicConfigSet = topicConfigSet;
         threads = new ArrayList<>(topicConfigSet.size());
@@ -40,7 +41,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
     }
 
     private DispatcherThread createDispatcherThread(SchedulerTopic dispatcherTopicConfig) {
-        Consumer consumer = consumerFactory.get();
+        Consumer consumer = consumerFactory.apply(dispatcherTopicConfig);
         DispatcherThread thread = new DispatcherThread(dispatcherTopicConfig, consumer, internalMessageHandler);
         thread.start();
         return thread;

@@ -8,6 +8,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.mockito.internal.util.collections.Iterables;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
+import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -22,12 +23,11 @@ import static pt.pak3nuh.messaging.kafka.scheduler.InternalMessageFactory.create
 
 class ConsumerImplTest {
 
-    private static final String TOPIC = "topic";
-    private static final int PARTITION = 1;
-    private static final TopicPartition TOPIC_PARTITION = new TopicPartition(TOPIC, PARTITION);
-    private long offset;
+    private static final SchedulerTopic SCHEDULER_TOPIC = new SchedulerTopic(1, SchedulerTopic.Granularity.MINUTES, "app");
+    private static final TopicPartition TOPIC_PARTITION = new TopicPartition(SCHEDULER_TOPIC.topicName(), 1);
     private final MockConsumer<String, InternalMessage> mock = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
     private final ConsumerImpl consumer = new ConsumerImpl(mock, Duration.ZERO);
+    private long offset;
 
     {
         mock.assign(singleton(TOPIC_PARTITION));
@@ -79,7 +79,7 @@ class ConsumerImplTest {
 
         // should pause on the record with the lowest offset
         for (Consumer.Record record : consumer.poll()) {
-            consumer.pause(record, Instant.now());
+            consumer.pause(record, Instant.EPOCH);
         }
 
         assertTrue(mock.paused().contains(TOPIC_PARTITION));
@@ -92,8 +92,60 @@ class ConsumerImplTest {
         assertEquals(lowestOffset, mock.position(TOPIC_PARTITION));
     }
 
+    @Test
+    void shouldNotHandleUnassignedPartitions() {
+        addRecord();
+        Consumer.Record record = consumer.poll().iterator().next();
+        consumer.pause(record, Instant.EPOCH);
+
+        mock.unsubscribe();
+        consumer.poll();
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+    }
+
+    @Test
+    void shouldHandleRebalancesGracefully() {
+        addRecord(5);
+
+        // can't process record, pause partition
+        Consumer.Record record = consumer.poll().iterator().next();
+        consumer.pause(record, Instant.EPOCH);
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+
+        mock.unsubscribe();
+
+        // clears unsubsribed paused partitions
+        consumer.poll();
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+
+        mock.assign(singleton(TOPIC_PARTITION));
+        consumer.poll();
+        assertTrue(mock.paused().isEmpty());
+    }
+
+    @Test
+    void shouldMaintainKafkaSubscriptionStateAfterReassignment() {
+        mock.pause(singleton(TOPIC_PARTITION));
+
+        mock.unsubscribe();
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+
+        mock.assign(singleton(TOPIC_PARTITION));
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+
+        mock.unsubscribe();
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+
+        mock.subscribe(singleton(TOPIC_PARTITION.topic()));
+        assertTrue(mock.paused().contains(TOPIC_PARTITION));
+    }
+
     private void addRecord() {
-        mock.addRecord(new ConsumerRecord<>(TOPIC, PARTITION, offset++, "key", create()));
+        addRecord(0);
+    }
+
+    private void addRecord(int minutes) {
+        mock.addRecord(new ConsumerRecord<>(TOPIC_PARTITION.topic(), TOPIC_PARTITION.partition(), offset++, "key", create(minutes, 0)));
     }
 
 }

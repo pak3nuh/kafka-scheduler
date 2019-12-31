@@ -6,10 +6,12 @@ public final class SchedulerTopic {
     private static final String TOPIC_PREFIX = "kafka-scheduler-internal-seconds-";
     private final int holdValue;
     private final Granularity granularity;
+    private final String appName;
 
-    public SchedulerTopic(int holdValue, Granularity granularity) {
+    public SchedulerTopic(int holdValue, Granularity granularity, String appName) {
         this.holdValue = holdValue;
         this.granularity = granularity;
+        this.appName = appName;
     }
 
     public int getHoldValue() {
@@ -29,7 +31,7 @@ public final class SchedulerTopic {
     }
 
     public String topicName() {
-        return TOPIC_PREFIX + toSeconds();
+        return appName + "-" + TOPIC_PREFIX + toSeconds();
     }
 
     @Override

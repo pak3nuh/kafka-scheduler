@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkNotEmpty;
 import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkNotNull;
@@ -23,9 +24,10 @@ import static pt.pak3nuh.messaging.kafka.scheduler.util.Check.checkPositive;
 
 public final class SchedulerBuilder {
 
-    private final Set<SchedulerTopic> topics = new HashSet<>();
+    private Set<SchedulerTopic> topics = new HashSet<>();
     private MessageFailureHandler handler = new LoggingFailureHandler();
     private String servers;
+    private String appName = "kafka-scheduler";
 
     public SchedulerBuilder(String servers) {
         this.servers = checkNotEmpty(servers);
@@ -33,18 +35,26 @@ public final class SchedulerBuilder {
 
     public SchedulerBuilder addScheduleMinutes(int minutes) {
         checkPositive(minutes);
-        topics.add(new SchedulerTopic(minutes, SchedulerTopic.Granularity.MINUTES));
+        topics.add(new SchedulerTopic(minutes, SchedulerTopic.Granularity.MINUTES, appName));
         return this;
     }
 
     public SchedulerBuilder addScheduleHours(int hours) {
         checkPositive(hours);
-        topics.add(new SchedulerTopic(hours, SchedulerTopic.Granularity.HOURS));
+        topics.add(new SchedulerTopic(hours, SchedulerTopic.Granularity.HOURS, appName));
         return this;
     }
 
     public SchedulerBuilder failureHandler(MessageFailureHandler handler) {
         this.handler = checkNotNull(handler);
+        return this;
+    }
+
+    public SchedulerBuilder appName(String appName) {
+        this.appName = appName;
+        topics = topics.stream()
+                .map(topic -> new SchedulerTopic(topic.getHoldValue(), topic.getGranularity(), appName))
+                .collect(Collectors.toSet());
         return this;
     }
 
@@ -68,7 +78,7 @@ public final class SchedulerBuilder {
         RoutingScheduler routingScheduler = new RoutingScheduler(router, granularity);
         InternalThreadDispatcher dispatcher = new InternalThreadDispatcher(
                 topics,
-                new ConsumerFactory(servers),
+                new ConsumerFactory(servers, appName),
                 routingScheduler
         );
         return new SchedulerWrapper(producer, dispatcher, servers, routingScheduler);
