@@ -11,8 +11,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kafka-client.version>2.4.0</kafka-client.version>
+        <kafka-cluster-unit.version>2.4.0</kafka-cluster-unit.version>
         <lombok.version>1.18.4</lombok.version>
         <junit-jupiter.version>5.5.2</junit-jupiter.version>
+        <log4j-slf4j-impl.version>2.13.0</log4j-slf4j-impl.version>
     </properties>
 
     <dependencyManagement>
@@ -39,6 +41,12 @@
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>3.2.4</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
+                <version>${log4j-slf4j-impl.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -80,4 +88,13 @@
         <module>api</module>
     </modules>
     <name>scheduler</name>
+
+    <profiles>
+        <profile>
+            <id>test</id>
+            <modules>
+                <module>integration-test</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

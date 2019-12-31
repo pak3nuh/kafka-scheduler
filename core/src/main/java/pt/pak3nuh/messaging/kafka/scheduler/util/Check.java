@@ -8,7 +8,7 @@ public class Check {
     }
 
     public static <T, C extends Collection<T>> C checkNotEmpty(C collection) {
-        check(collection.isEmpty(), "Collection is empty");
+        check(!collection.isEmpty(), "Collection is empty");
         return collection;
     }
 
