@@ -17,6 +17,10 @@ public class ClientMessage {
         this.content = Objects.requireNonNull(content);
     }
 
+    public ClientMessage(String source, String destination, byte[] content) {
+        this(Instant.now(), source, destination, content);
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
