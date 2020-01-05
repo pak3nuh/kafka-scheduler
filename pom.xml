@@ -4,7 +4,7 @@
     <groupId>pt.pak3nuh.messaging.kafka</groupId>
     <artifactId>scheduler</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.target>1.8</maven.compiler.target>
