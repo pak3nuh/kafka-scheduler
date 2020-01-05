@@ -33,7 +33,7 @@ public final class TopicRouterImpl implements TopicRouter {
         this.producer = producer;
         // gets the last value on the sorted set
         HoldTopic temp = Collections.min(this.topics);
-        finerGranularityTopic = new SinkTopic(producer, temp.name, handler);
+        finerGranularityTopic = new SinkTopic(producer, temp.name, handler, false);
     }
 
     @Override
@@ -42,8 +42,8 @@ public final class TopicRouterImpl implements TopicRouter {
         Instant now = Instant.now();
         Instant deliverAt = message.getDeliverAt();
         if (deliverAt.compareTo(now) <= 0) {
-            LOGGER.debug("Wait time expired, message can be delivered.");
-            return new SinkTopic(producer, message.getClientMessage().getDestination(), handler);
+            LOGGER.debug("Wait time expired, message can be delivered to client.");
+            return new SinkTopic(producer, message.getClientMessage().getDestination(), handler, true);
         }
 
         long secondsToHold = now.until(deliverAt, ChronoUnit.SECONDS);
@@ -51,11 +51,11 @@ public final class TopicRouterImpl implements TopicRouter {
     }
 
     private Topic calculateNextTopic(long secondsToHold, InternalMessage message) {
-        LOGGER.debug("Calculating next topic with {} seconds to hold", secondsToHold);
+        LOGGER.debug("Calculating next intermediate topic for message {} with {} seconds to hold", message.getId(), secondsToHold);
         return topics.stream()
                 .filter(holdTopic -> holdTopic.canHold(secondsToHold))
                 .findFirst()
-                .map(holdTopic -> new SinkTopic(producer, holdTopic.name, handler))
+                .map(holdTopic -> new SinkTopic(producer, holdTopic.name, handler, false))
                 .orElse(finerGranularityTopic);
     }
 

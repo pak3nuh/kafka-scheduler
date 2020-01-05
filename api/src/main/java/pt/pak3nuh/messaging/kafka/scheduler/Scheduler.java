@@ -6,6 +6,8 @@ import java.time.Instant;
  * <p>A message delivery system with scheduling capabilities.</p>
  * <p>The delivery semantics are just an estimation and not an exact promise. The actual delivery time depends
  * on external factors like latency or service pressure and the least amount of granularity provided.</p>
+ * <p>The consumer on the {@link ClientMessage#getDestination()} topic will receive a message with a generated
+ * {@link String} id and the array of bytes in the {@link ClientMessage#getContent()}.</p>
  */
 public interface Scheduler extends AutoCloseable {
     /**

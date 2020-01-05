@@ -20,23 +20,34 @@ class SinkTopicTest {
     @Test
     void shouldDelegateToProducerOnSuccess() {
         Producer producer = mockStrict(Producer.class);
-        willDoNothing().given(producer).send(any(), any());
+        willDoNothing().given(producer).send(any(), any(InternalMessage.class));
         InternalMessage internalMessage = create();
 
-        new SinkTopic(producer, "destination", null).send(internalMessage);
+        new SinkTopic(producer, "destination", null, false).send(internalMessage);
 
         verify(producer).send("destination", internalMessage);
     }
 
     @Test
+    void shouldDeliverClientMessage() {
+        Producer producer = mockStrict(Producer.class);
+        willDoNothing().given(producer).send(any(), any(ClientMessage.class));
+        InternalMessage internalMessage = create();
+
+        new SinkTopic(producer, "destination", null, true).send(internalMessage);
+
+        verify(producer).send("destination", internalMessage.getClientMessage());
+    }
+
+    @Test
     void shouldDelegateToHandlerOnFailure() {
         Producer producer = mockStrict(Producer.class);
-        willThrow(new RuntimeException()).given(producer).send(any(), any());
+        willThrow(new RuntimeException()).given(producer).send(any(), any(InternalMessage.class));
         MessageFailureHandler handler = mockStrict(MessageFailureHandler.class);
         InternalMessage internalMessage = create();
         willDoNothing().given(handler).handle(any(ClientMessage.class), any(SchedulerException.class));
 
-        new SinkTopic(producer, "destination", handler).send(internalMessage);
+        new SinkTopic(producer, "destination", handler, false).send(internalMessage);
 
         verify(handler).handle(eq(internalMessage.getClientMessage()), any());
     }

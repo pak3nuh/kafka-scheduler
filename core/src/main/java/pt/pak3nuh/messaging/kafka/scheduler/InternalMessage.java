@@ -34,7 +34,7 @@ public final class InternalMessage {
     }
 
     public InternalMessage(Instant deliverAt, ClientMessage message) {
-        this(ID_GEN.getAndIncrement(), Instant.now(), deliverAt, message);
+        this(ID_GEN.getAndIncrement(), deliverAt, Instant.now(), message);
     }
 
     /**
@@ -59,13 +59,13 @@ public final class InternalMessage {
     public static InternalMessage fromBytes(byte[] bytes) {
         Reader reader = new Reader(bytes);
         long id = reader.getLong();
-        Instant shouldRunAt = reader.getInstant();
-        Instant holdUntil = reader.getInstant();
-        Instant createdAt = reader.getInstant();
+        Instant deliverAt = reader.getInstant();
+        Instant internalCreatedAt = reader.getInstant();
+        Instant clientCreatedAt = reader.getInstant();
         String source = reader.getString();
         String destination = reader.getString();
         byte[] content = reader.getBytes();
-        return new InternalMessage(id, shouldRunAt, holdUntil,
-                new ClientMessage(createdAt, source, destination, content));
+        return new InternalMessage(id, deliverAt, internalCreatedAt,
+                new ClientMessage(clientCreatedAt, source, destination, content));
     }
 }

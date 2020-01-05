@@ -15,10 +15,11 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toList;
 
 final class ConsumerImpl implements Consumer {
 
@@ -37,13 +38,17 @@ final class ConsumerImpl implements Consumer {
     public Iterable<Record> poll() {
         maybeResumePartitions();
 
+        LOGGER.debug("Polling remote data with timeout {}", pollTimeout);
         ConsumerRecords<String, InternalMessage> consumerRecords = consumer.poll(pollTimeout);
-        if (consumerRecords.isEmpty())
+        if (consumerRecords.isEmpty()) {
+            LOGGER.trace("No records to return");
             return Collections.emptyList();
+        }
 
+        LOGGER.trace("Returning records");
         return StreamSupport.stream(consumerRecords.spliterator(), false)
                 .map(this::toRecord)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     private void maybeResumePartitions() {
@@ -53,14 +58,19 @@ final class ConsumerImpl implements Consumer {
         We can hold the paused timeout for a partition as long as needed, but only operate on it when is assigned
         */
         Instant now = Instant.now();
-        consumer.assignment().forEach(assigned -> {
+        Set<TopicPartition> assignment = consumer.assignment();
+        LOGGER.trace("Consumer current assignment {}", assignment);
+        assignment.forEach(assigned -> {
             PausedTopic pausedTopic = pausedPartitionsTimeout.get(assigned);
-            LOGGER.trace("PausedTopic {} for partition {}", pausedTopic, assigned);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Assigned partition {} on position {} has pause timeout {}", assigned, consumer.position(assigned), pausedTopic);
+            }
             if (null != pausedTopic) {
-                if (min(now, pausedTopic.pausedUntil) != now) {
-                    LOGGER.debug("Resuming partition {} and preform seek {} due to timeout", assigned, pausedTopic.offset);
+                if (pausedTopic.hasTimedOut(now)) {
+                    LOGGER.debug("Resuming partition {} and preform seek {} due to pause timeout", assigned, pausedTopic.offset);
                     consumer.resume(singleton(assigned));
                     consumer.seek(assigned, new OffsetAndMetadata(pausedTopic.offset));
+                    pausedPartitionsTimeout.remove(assigned);
                 }
             }
         });
@@ -74,6 +84,7 @@ final class ConsumerImpl implements Consumer {
     public void commit(Record record) {
         Check.check(record instanceof R, "Unknown record type");
         R r = (R) record;
+        LOGGER.debug("Committing record {}", r);
         TopicPartition topicPartition = new TopicPartition(r.getTopic(), r.getPartition());
         consumer.commitSync(Collections.singletonMap(
                 topicPartition,
@@ -82,28 +93,27 @@ final class ConsumerImpl implements Consumer {
 
     @Override
     public void pause(Record record, Instant until) {
+        Check.check(record instanceof R, "Unknown record type");
         R r = (R) record;
+        LOGGER.debug("Pausing on record {} until {}", r, until);
         TopicPartition topicPartition = new TopicPartition(r.topic, r.partition);
         PausedTopic pausedTopic = new PausedTopic(r.offset, until);
         // should save the minimum offset (and instant by adjacency)
         pausedPartitionsTimeout.compute(topicPartition, (key, stored) -> {
             if (stored == null) {
+                LOGGER.trace("Pausing consumer partition {}", key);
                 consumer.pause(singleton(key));
                 return pausedTopic;
             }
-            return pausedTopic.min(stored);
+            PausedTopic minOffset = pausedTopic.min(stored);
+            LOGGER.trace("Partition already paused, keeping offset {}", minOffset);
+            return minOffset;
         });
     }
 
     @Override
     public void close() {
         consumer.close();
-    }
-
-    // todo see Manifold or Lombok for extension methods
-    // https://github.com/manifold-systems/manifold/tree/master/manifold-deps-parent/manifold-ext
-    private Instant min(Instant stored, Instant until) {
-        return stored.compareTo(until) <= 0 ? stored : until;
     }
 
     @Value
@@ -122,6 +132,10 @@ final class ConsumerImpl implements Consumer {
         public PausedTopic min(PausedTopic other) {
             if (offset <= other.offset) return this;
             return other;
+        }
+
+        public boolean hasTimedOut(Instant instant) {
+            return pausedUntil.compareTo(instant) < 0;
         }
     }
 }

@@ -4,9 +4,9 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import pt.pak3nuh.messaging.kafka.scheduler.consumer.ConsumerFactory;
-import pt.pak3nuh.messaging.kafka.scheduler.data.InternalMessageSerde;
 import pt.pak3nuh.messaging.kafka.scheduler.dispatcher.InternalThreadDispatcher;
 import pt.pak3nuh.messaging.kafka.scheduler.producer.Producer;
 import pt.pak3nuh.messaging.kafka.scheduler.producer.ProducerImpl;
@@ -61,9 +61,7 @@ public final class SchedulerBuilder {
     private Producer getProducer() {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, InternalMessageSerde.Serializer.class);
-        return new ProducerImpl(new KafkaProducer<>(props));
+        return new ProducerImpl(new KafkaProducer<>(props, new StringSerializer(), new ByteArraySerializer()));
     }
 
     public Scheduler build() {

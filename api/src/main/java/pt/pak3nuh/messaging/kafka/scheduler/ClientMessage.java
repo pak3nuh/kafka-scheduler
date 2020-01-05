@@ -21,20 +21,43 @@ public class ClientMessage {
         this(Instant.now(), source, destination, content);
     }
 
+    /**
+     * Message creation time.
+     */
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    /**
+     * <p>Topic to deliver the message once the expected wait time has passed.</p>
+     */
     public String getDestination() {
         return destination;
     }
 
+    /**
+     * The content to be delivered.
+     */
     public byte[] getContent() {
         return content;
     }
 
+    /**
+     * <p>The source of the message. This field isn't handled by the library except for logging purposes</p>
+     */
     public String getSource() {
         return source;
+    }
+
+    /**
+     * <p>Expected message id on delivery to the {@link #getDestination()} topic.</p>
+     * <p>This id serves for partitioning purposes only and its uniqueness isn't guaranteed.</p>
+     * <p>This may change in the future if partitioning becomes customizable.</p>
+     */
+    public String getId() {
+        int result = Objects.hash(source, destination);
+        result = 31 * result + Arrays.hashCode(content);
+        return String.valueOf(result);
     }
 
     @Override

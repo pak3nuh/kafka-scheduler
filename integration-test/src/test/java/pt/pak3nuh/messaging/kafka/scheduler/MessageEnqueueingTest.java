@@ -1,6 +1,7 @@
 package pt.pak3nuh.messaging.kafka.scheduler;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -14,16 +15,24 @@ import org.mandas.kafka.KafkaCluster;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class MessageEnqueueingTest {
 
     private static final String TOPIC = "destination";
-    private static final KafkaCluster cluster = KafkaCluster.builder()
-            .withZookeeper("127.0.0.1", 10000, 10001)
-            .withBroker(1, "127.0.0.1", 10002, 10003)
-            .build();
+    private static final KafkaCluster cluster;
+
+    static {
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("auto.create.topics.enable", true);
+        cluster = KafkaCluster.builder()
+                .withZookeeper("127.0.0.1", 2181, 2182)
+                .withBroker(1, "127.0.0.1", 9092, 9093, properties)
+                .build();
+    }
 
     @BeforeAll
     static void beforeAll() {
@@ -37,7 +46,7 @@ public final class MessageEnqueueingTest {
     }
 
     @Test
-    void shouldDeliverAtSpecifiedTime() {
+    void shouldDeliverAtSpecifiedTime() throws TimeoutException {
         SchedulerBuilder builder = new SchedulerBuilder(cluster.brokers()).addScheduleMinutes(1);
 
         try(Scheduler scheduler = builder.build()) {
@@ -45,24 +54,27 @@ public final class MessageEnqueueingTest {
             Instant timeToDeliver = Instant.now().plusSeconds(60);
             String payload = "payload";
             scheduler.enqueue(timeToDeliver, new ClientMessage("blah", TOPIC, payload.getBytes()));
-            Assertions.assertTimeout(Duration.ofMinutes(2), () -> waitForResult(payload));
+            waitForResult(payload, timeToDeliver, scheduler.granularityInSeconds());
         }
     }
 
-    private void waitForResult(String payload) {
+    private void waitForResult(String payload, Instant estimatedTime, long delay) throws TimeoutException {
+        Instant timeout = estimatedTime.plusSeconds(delay);
         ByteArrayDeserializer deserializer = new ByteArrayDeserializer();
-        try (Consumer<byte[], byte[]> consumer = cluster.consumer(new Properties(), deserializer, deserializer)) {
+        Properties properties = new Properties();
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "some-id");
+        try (Consumer<byte[], byte[]> consumer = cluster.consumer(properties, deserializer, deserializer)) {
             consumer.subscribe(Collections.singleton(TOPIC));
-            while (true) {
+            while (Instant.now().compareTo(timeout) < 0) {
                 ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.ofSeconds(5));
                 if (!records.isEmpty()) {
                     ConsumerRecord<byte[], byte[]> record = records.iterator().next();
-                    byte[] bytes = record.value();
-                    String result = new String(bytes);
-                    Assertions.assertEquals(payload, result);
-                    break;
+                    String actualPayload = new String(record.value());
+                    Assertions.assertEquals(payload, actualPayload);
+                    return;
                 }
             }
         }
+        throw new TimeoutException();
     }
 }

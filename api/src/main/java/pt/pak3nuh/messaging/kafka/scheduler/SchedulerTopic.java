@@ -40,12 +40,22 @@ public final class SchedulerTopic {
         if (o == null || getClass() != o.getClass()) return false;
         SchedulerTopic that = (SchedulerTopic) o;
         return holdValue == that.holdValue &&
-                granularity == that.granularity;
+                granularity == that.granularity &&
+                Objects.equals(appName, that.appName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(holdValue, granularity);
+        return Objects.hash(holdValue, granularity, appName);
+    }
+
+    @Override
+    public String toString() {
+        return "SchedulerTopic{" +
+                "holdValue=" + holdValue +
+                ", granularity=" + granularity +
+                ", appName='" + appName + '\'' +
+                '}';
     }
 
     public enum Granularity {

@@ -1,5 +1,6 @@
 package pt.pak3nuh.messaging.kafka.scheduler.dispatcher;
 
+import lombok.ToString;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,7 @@ import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 import pt.pak3nuh.messaging.kafka.scheduler.annotation.VisibleForTesting;
 import pt.pak3nuh.messaging.kafka.scheduler.consumer.Consumer;
 import pt.pak3nuh.messaging.kafka.scheduler.data.Tuples;
+import pt.pak3nuh.messaging.kafka.scheduler.util.Check;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -15,10 +17,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public final class InternalThreadDispatcher implements InternalDispatcher {
+public final class InternalThreadDispatcher implements InternalDispatcher, Thread.UncaughtExceptionHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(InternalThreadDispatcher.class);
     private final Set<SchedulerTopic> topicConfigSet;
     private final List<DispatcherThread> threads;
     private final Function<SchedulerTopic, Consumer> consumerFactory;
@@ -35,6 +39,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
 
     @Override
     public void start() {
+        LOGGER.info("Starting dispatcher threads");
         topicConfigSet.stream()
                 .map(this::createDispatcherThread)
                 .forEach(threads::add);
@@ -43,12 +48,24 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
     private DispatcherThread createDispatcherThread(SchedulerTopic dispatcherTopicConfig) {
         Consumer consumer = consumerFactory.apply(dispatcherTopicConfig);
         DispatcherThread thread = new DispatcherThread(dispatcherTopicConfig, consumer, internalMessageHandler);
+        thread.setUncaughtExceptionHandler(this);
         thread.start();
         return thread;
     }
 
     @Override
+    public void uncaughtException(Thread thread, Throwable throwable) {
+        Check.check(thread instanceof DispatcherThread, "Unknown thread");
+        DispatcherThread dispatcherThread = (DispatcherThread) thread;
+        LOGGER.error("DispatcherThread {} died with uncaught exception. Topic {} is unhandled",
+                thread.getName(), dispatcherThread.config);
+        // Doesn't launch another thread so that it doesn't loop on cases like out of memory or a persistent error
+        // todo set a handler to configure what to do
+    }
+
+    @Override
     public void close() {
+        LOGGER.info("Shutting down dispatcher threads");
         Iterator<DispatcherThread> iterator = threads.iterator();
         while (iterator.hasNext()) {
             iterator.next().shutdown();
@@ -58,6 +75,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
 
     static final class DispatcherThread extends Thread {
 
+        private static AtomicInteger THREAD_ID_GEN = new AtomicInteger(0);
         private static final Logger LOGGER = LoggerFactory.getLogger(DispatcherThread.class);
         private final SchedulerTopic config;
         private final Consumer consumer;
@@ -68,6 +86,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
             this.config = config;
             this.consumer = consumer;
             this.internalMessageHandler = internalMessageHandler;
+            setName("DispatcherThread-" + THREAD_ID_GEN.getAndIncrement());
         }
 
         {
@@ -75,28 +94,36 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
         }
 
         public void shutdown() {
+            // different thread signals the shutdown
+            LOGGER.info("Signaling shutdown on thread {}", getName());
             closing = true;
         }
 
         @Override
         public void run() {
-            while (!closing) {
-                try {
-                    doConsume();
-                } catch (WakeupException ex) {
-                    LOGGER.warn("Wakeup exception occurred, closing loop", ex);
-                    closing = true;
-                } catch (Exception ex) {
-                    LOGGER.error("Error doing consumer loop", ex);
+            LOGGER.info("Starting consumer loop");
+            try{
+                while (!closing) {
+                    try {
+                        doConsume();
+                    } catch (WakeupException ex) {
+                        LOGGER.warn("Wakeup exception occurred, closing loop", ex);
+                        closing = true;
+                    } catch (Exception ex) {
+                        LOGGER.error("Error doing consumer loop", ex);
+                    }
                 }
+            } finally {
+                LOGGER.info("Ending consumer loop");
+                consumer.close();
             }
-            consumer.close();
         }
 
         @VisibleForTesting
         void doConsume() {
             Iterable<Consumer.Record> records = consumer.poll();
             Work work = splitWork(records, Instant.now());
+            LOGGER.debug("Work to process {}", work);
             work.toProcess.forEach(record -> {
                 internalMessageHandler.handle(record.getMessage());
                 consumer.commit(record);
@@ -126,6 +153,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher {
         }
 
         @VisibleForTesting
+        @ToString
         static class Work {
             List<Consumer.Record> toProcess = new ArrayList<>();
             List<Tuples.Tuple<Consumer.Record, Instant>> toPause = new ArrayList<>();
