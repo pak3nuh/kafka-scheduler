@@ -5,7 +5,7 @@ import java.time.Instant;
 /**
  * <p>A message delivery system with scheduling capabilities.</p>
  * <p>The delivery semantics are just an estimation and not an exact promise. The actual delivery time depends
- * on external factors like latency or service pressure and the least amount of granularity provided.</p>
+ * on external factors like latency or service pressure.</p>
  * <p>The consumer on the {@link ClientMessage#getDestination()} topic will receive a message with a generated
  * {@link String} id and the array of bytes in the {@link ClientMessage#getContent()}.</p>
  */
@@ -16,7 +16,6 @@ public interface Scheduler extends AutoCloseable {
     void start();
     /**
      * <p>Enqueues a message for delivery starting at <code>instant</code> and never sooner.</p>
-     * <p>Actual delivery guarantees depend on the granularity of the schedule topics</p>
      * @param deliverAt The instant for message delivery
      * @param message The message to deliver
      * @see #granularityInSeconds()
@@ -24,9 +23,7 @@ public interface Scheduler extends AutoCloseable {
     void enqueue(Instant deliverAt, ClientMessage message);
 
     /**
-     * <p>Returns in seconds the finer granularity available on the scheduler. This value will tell the maximum amount
-     * of delay estimated between the delivery time requested and the actual delivery.</p>
-     * <p>The estimation is excluding factors like network latency or service pressure.</p>
+     * <p>Returns in seconds the finer granularity available on the scheduler.</p>
      * @return the finer available granularity between schedules.
      */
     long granularityInSeconds();

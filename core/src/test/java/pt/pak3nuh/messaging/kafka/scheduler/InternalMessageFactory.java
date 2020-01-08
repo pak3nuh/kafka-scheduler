@@ -17,14 +17,19 @@ public final class InternalMessageFactory {
     }
 
     public static InternalMessage create(Instant timestamp) {
-        return new InternalMessage(0, timestamp, timestamp,
+        return create(timestamp, timestamp);
+    }
+
+    public static InternalMessage create(Instant deliveryTime, Instant creationTime) {
+        return new InternalMessage(0, deliveryTime, creationTime,
                 new ClientMessage(Instant.now(), "source", "destination", new byte[0]));
     }
 
     public static Stream<InternalMessage> createInternalMessageStream(int numberOfMessages, int minutes) {
         ArrayList<InternalMessage> objects = new ArrayList<>(numberOfMessages);
+        Instant delivery = Instant.now().plusSeconds(60 * minutes);
         for (int i = 0; i < numberOfMessages; i++) {
-            objects.add(create(minutes, 0));
+            objects.add(create(delivery, Instant.now()));
         }
         return objects.stream();
     }

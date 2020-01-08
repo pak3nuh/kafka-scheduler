@@ -4,6 +4,7 @@ import lombok.ToString;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessageHandler;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 import pt.pak3nuh.messaging.kafka.scheduler.annotation.VisibleForTesting;
@@ -102,7 +103,7 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
         @Override
         public void run() {
             LOGGER.info("Starting consumer loop");
-            try{
+            try {
                 while (!closing) {
                     try {
                         doConsume();
@@ -136,8 +137,10 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
             Work work = new Work();
             // avoid calculating the enqueued with delay for each record
             Instant nowWithDelay = now.minus(config.toSeconds(), ChronoUnit.SECONDS);
+            LOGGER.trace("Now offsetted with topic hold time {}", nowWithDelay);
             records.forEach(record -> {
-                long secondsToProcess = secondsUntilProcess(record, nowWithDelay);
+                long secondsToProcess = secondsUntilProcess(record.getMessage(), nowWithDelay, now);
+                LOGGER.trace("Seconds {} to process record record {}", secondsToProcess, record);
                 if (secondsToProcess <= 0) {
                     work.toProcess.add(record);
                 } else {
@@ -148,8 +151,25 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
             return work;
         }
 
-        private long secondsUntilProcess(Consumer.Record record, Instant nowWithDelay) {
-            return nowWithDelay.until(record.getMessage().getCreatedAt(), ChronoUnit.SECONDS);
+        /**
+         * Returns the remaining seconds until the record can be processed.
+         *
+         * @param message      The message to process.
+         * @param nowWithDelay The timestamp offsetted for the topic hold time.
+         * @param now          Current timestamp.
+         * @return A positive number if there are seconds to wait or else if it can be processed.
+         */
+        @VisibleForTesting
+        static long secondsUntilProcess(InternalMessage message, Instant nowWithDelay, Instant now) {
+            Instant messageDelivery = message.getDeliverAt();
+            Instant createdAt = message.getCreatedAt();
+            // should hold
+            return Math.min(
+                    // time until hold time is complete
+                    nowWithDelay.until(createdAt, ChronoUnit.SECONDS),
+                    // time until message is delivered
+                    now.until(messageDelivery, ChronoUnit.SECONDS)
+            );
         }
 
         @VisibleForTesting
