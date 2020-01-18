@@ -5,18 +5,22 @@ import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
 import java.time.Instant;
 
 /**
- * <p>Consumes the records over a kafka topic and hides partition pausing mechanics.</p>
- * <p>This consumer is designed to work with the default threading model for kafka consumer, meaning not concurrent.</p>
+ * <p>Consumes the records over a kafka topic and hides pausing and seeking mechanics.</p>
+ * <p>This consumer is designed to work with the default threading model for kafka consumer, meaning not concurrent.
+ * It should also be used like a log, meaning you process a record, mark it as processed and move to the next.</p>
  * <p>All the operations submitted to kafka are synchronous.</p>
  */
 public interface Consumer extends AutoCloseable {
     /**
-     * Gets an iterable of records
+     * Gets an iterable of records.
+     * <p>If it is the first time, then it will delegate to the kafka consumer settings, if its not the first time
+     * then the next records should be the ones after the last {@link #commit(Record)}.</p>
      */
     Iterable<Record> poll();
 
     /**
-     * Submits the offsets to kafka and marks the record as processed.
+     * <p>Submits the offsets to kafka, marking the record as processed, and ensures the next {@link #poll()} call
+     * will return only newer records than {@code record}.</p>
      */
     void commit(Record record);
 

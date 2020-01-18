@@ -12,6 +12,7 @@ import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
@@ -57,7 +58,7 @@ class ConsumerImplTest {
 
         Map<TopicPartition, OffsetAndMetadata> committed = mock.committed(singleton(TOPIC_PARTITION));
         assertEquals(1, committed.size());
-        assertEquals(currentOffset, committed.get(TOPIC_PARTITION).offset());
+        assertEquals(currentOffset + 1, committed.get(TOPIC_PARTITION).offset());
     }
 
     @Test
@@ -138,6 +139,16 @@ class ConsumerImplTest {
 
         mock.subscribe(singleton(TOPIC_PARTITION.topic()));
         assertTrue(mock.paused().contains(TOPIC_PARTITION));
+    }
+
+    @Test
+    void shouldPositionCorrectlyOnCommit() {
+        // this avoids receiving duplicate records between two poll calls with error
+        addRecord();
+        final Iterator<Consumer.Record> firstPoll = consumer.poll().iterator();
+        consumer.commit(firstPoll.next());
+        assertEquals(offset, mock.position(TOPIC_PARTITION));
+        assertEquals(offset, mock.committed(singleton(TOPIC_PARTITION)).get(TOPIC_PARTITION).offset());
     }
 
     private void addRecord() {

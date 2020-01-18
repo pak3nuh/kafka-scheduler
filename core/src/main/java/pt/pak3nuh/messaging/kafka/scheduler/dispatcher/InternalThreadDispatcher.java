@@ -1,11 +1,12 @@
 package pt.pak3nuh.messaging.kafka.scheduler.dispatcher;
 
 import lombok.ToString;
+import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessageHandler;
+import pt.pak3nuh.messaging.kafka.scheduler.SchedulerException;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerTopic;
 import pt.pak3nuh.messaging.kafka.scheduler.annotation.VisibleForTesting;
 import pt.pak3nuh.messaging.kafka.scheduler.consumer.Consumer;
@@ -87,10 +88,10 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
             this.config = config;
             this.consumer = consumer;
             this.internalMessageHandler = internalMessageHandler;
-            setName("DispatcherThread-" + THREAD_ID_GEN.getAndIncrement());
         }
 
         {
+            setName("DispatcherThread-" + THREAD_ID_GEN.getAndIncrement());
             setDaemon(true);
         }
 
@@ -107,9 +108,15 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
                 while (!closing) {
                     try {
                         doConsume();
-                    } catch (WakeupException ex) {
+                    } catch (WakeupException | InterruptException ex) {
                         LOGGER.warn("Wakeup exception occurred, closing loop", ex);
                         closing = true;
+                    } catch (SchedulerException ex) {
+                        LOGGER.error("Internal exception caught", ex);
+                        if (ex.isFatal()) {
+                            LOGGER.info("Closing consumer loop on internal exception");
+                            closing = true;
+                        }
                     } catch (Exception ex) {
                         LOGGER.error("Error doing consumer loop", ex);
                     }
@@ -125,22 +132,31 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
             Iterable<Consumer.Record> records = consumer.poll();
             Work work = splitWork(records, Instant.now());
             LOGGER.debug("Work to process {}", work);
-            work.toProcess.forEach(record -> {
-                internalMessageHandler.handle(record.getMessage());
-                consumer.commit(record);
-            });
-            work.toPause.forEach(tuple -> consumer.pause(tuple.getLeft(), tuple.getRight()));
+            work.toProcess.stream()
+                    .filter(r -> !closing)
+                    .forEach(record -> {
+                        internalMessageHandler.handle(record.getMessage());
+                        consumer.commit(record);
+                    });
+            work.toPause.stream()
+                    .filter(r -> !closing)
+                    .forEach(tuple -> consumer.pause(tuple.getLeft(), tuple.getRight()));
         }
 
         @VisibleForTesting
         Work splitWork(Iterable<Consumer.Record> records, Instant now) {
             Work work = new Work();
             // avoid calculating the enqueued with delay for each record
-            Instant nowWithDelay = now.minus(config.toSeconds(), ChronoUnit.SECONDS);
-            LOGGER.trace("Now offsetted with topic hold time {}", nowWithDelay);
+            Instant nowWithDelay = now.minusSeconds(config.toSeconds());
+            LOGGER.trace("Instant.now offsetted with topic hold time = {}", nowWithDelay);
             records.forEach(record -> {
-                long secondsToProcess = secondsUntilProcess(record.getMessage(), nowWithDelay, now);
-                LOGGER.trace("Seconds {} to process record record {}", secondsToProcess, record);
+                /*Optimization of this should be considered carefully.
+                A message put in the work queue will be commited and may introduce problems like messages being lost
+                or reprocessed.
+                All messages should respect the wait time of the topic.
+                * */
+                long secondsToProcess = nowWithDelay.until(record.getMessage().getCreatedAt(), ChronoUnit.SECONDS);
+                LOGGER.trace("{} seconds to process record record {}", secondsToProcess, record);
                 if (secondsToProcess <= 0) {
                     work.toProcess.add(record);
                 } else {
@@ -149,27 +165,6 @@ public final class InternalThreadDispatcher implements InternalDispatcher, Threa
                 }
             });
             return work;
-        }
-
-        /**
-         * Returns the remaining seconds until the record can be processed.
-         *
-         * @param message      The message to process.
-         * @param nowWithDelay The timestamp offsetted for the topic hold time.
-         * @param now          Current timestamp.
-         * @return A positive number if there are seconds to wait or else if it can be processed.
-         */
-        @VisibleForTesting
-        static long secondsUntilProcess(InternalMessage message, Instant nowWithDelay, Instant now) {
-            Instant messageDelivery = message.getDeliverAt();
-            Instant createdAt = message.getCreatedAt();
-            // should hold
-            return Math.min(
-                    // time until hold time is complete
-                    nowWithDelay.until(createdAt, ChronoUnit.SECONDS),
-                    // time until message is delivered
-                    now.until(messageDelivery, ChronoUnit.SECONDS)
-            );
         }
 
         @VisibleForTesting

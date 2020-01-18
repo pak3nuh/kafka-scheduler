@@ -15,7 +15,9 @@ scheduler.enqueue(timeToDeliver, new ClientMessage("string client", "final-topic
 ```
 
 The message will be delivered never before the `timeToDeliver` instant, but there are no guarantees over the exact
-timing. Actual delivery delays depend on factors like service pressure or network latency.
+timing. Actual delivery delays depend on factors like service pressure, network latency and the finer granularity
+topic available. Because we can't loose messages, we also can't process them out of order and every message must
+respect the hold time associated with every topic.
 
 The client application can expect a message to be enqueued on `final-topic` topic with an internal id and the bytes
 of the `payload` string.
@@ -41,6 +43,14 @@ A custom error handler can be provided so that client applications can react to 
 handler only logs failures. **Messages with error aren't retried**. 
 
 More advanced error handling is planned, but not yet available. Will depend on what is requested. 
+
+#### At least once semantics
+
+I'm aiming at **at least once** semantics for the delivery system, ensuring every message is delivered.
+
+Like every Kafka application, it is very difficult to ensure exactly one semantics. There are are some statefull
+ objects (mainly kafka) and intricate moving parts to manage. I'll try to avoid this, but I can't guarantee it.
+Nevertheless, if receiving duplicate messages is a problem, the final topic consumers should expect them.
 
 ## Roadmap
 

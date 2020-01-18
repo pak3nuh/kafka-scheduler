@@ -1,5 +1,6 @@
 package pt.pak3nuh.messaging.kafka.scheduler.routing;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import pt.pak3nuh.messaging.kafka.scheduler.ClientMessage;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
@@ -40,15 +41,21 @@ class SinkTopicTest {
     }
 
     @Test
-    void shouldDelegateToHandlerOnFailure() {
+    void shouldThrowAndDelegateToHandlerOnFailure() {
         Producer producer = mockStrict(Producer.class);
         willThrow(new RuntimeException()).given(producer).send(any(), any(InternalMessage.class));
         MessageFailureHandler handler = mockStrict(MessageFailureHandler.class);
         InternalMessage internalMessage = create();
         willDoNothing().given(handler).handle(any(ClientMessage.class), any(SchedulerException.class));
+        boolean thrown = false;
 
-        new SinkTopic(producer, "destination", handler, false).send(internalMessage);
+        try {
+            new SinkTopic(producer, "destination", handler, false).send(internalMessage);
+        } catch (SchedulerException e) {
+            thrown = true;
+        }
 
+        Assertions.assertTrue(thrown);
         verify(handler).handle(eq(internalMessage.getClientMessage()), any());
     }
 }

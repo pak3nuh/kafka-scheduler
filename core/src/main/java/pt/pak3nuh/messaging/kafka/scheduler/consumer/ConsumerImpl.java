@@ -56,6 +56,7 @@ final class ConsumerImpl implements Consumer {
         Kafka consumer maintains the subscription state even if the partitions is no longer assigned.
         That means we only want to preform operations on assigned partitions or else the pause/resume will fail.
         We can hold the paused timeout for a partition as long as needed, but only operate on it when is assigned
+        Since it is not expected that consumers will change subscriptions, it is not a memory leak.
         */
         Instant now = Instant.now();
         Set<TopicPartition> assignment = consumer.assignment();
@@ -71,6 +72,8 @@ final class ConsumerImpl implements Consumer {
                     consumer.resume(singleton(assigned));
                     consumer.seek(assigned, new OffsetAndMetadata(pausedTopic.offset));
                     pausedPartitionsTimeout.remove(assigned);
+                } else {
+                    LOGGER.trace("Paused topic {} has not yet timed out", pausedTopic);
                 }
             }
         });
@@ -86,9 +89,11 @@ final class ConsumerImpl implements Consumer {
         R r = (R) record;
         LOGGER.debug("Committing record {}", r);
         TopicPartition topicPartition = new TopicPartition(r.getTopic(), r.getPartition());
+        final long newOffset = r.getOffset() + 1;
         consumer.commitSync(Collections.singletonMap(
                 topicPartition,
-                new OffsetAndMetadata(r.getOffset())));
+                new OffsetAndMetadata(newOffset)));
+        consumer.seek(topicPartition, newOffset);
     }
 
     @Override
@@ -98,7 +103,7 @@ final class ConsumerImpl implements Consumer {
         LOGGER.debug("Pausing on record {} until {}", r, until);
         TopicPartition topicPartition = new TopicPartition(r.topic, r.partition);
         PausedTopic pausedTopic = new PausedTopic(r.offset, until);
-        // should save the minimum offset (and instant by adjacency)
+        // should save the minimum offset
         pausedPartitionsTimeout.compute(topicPartition, (key, stored) -> {
             if (stored == null) {
                 LOGGER.trace("Pausing consumer partition {}", key);

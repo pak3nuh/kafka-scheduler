@@ -5,7 +5,7 @@
     <parent>
         <artifactId>scheduler</artifactId>
         <groupId>pt.pak3nuh.messaging.kafka</groupId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>0.2.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -22,7 +22,7 @@
             <groupId>org.mandas.kafka</groupId>
             <artifactId>kafka-cluster-unit</artifactId>
             <version>${kafka-cluster-unit.version}</version>
-            <scope>test</scope>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -35,6 +35,7 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
+            <scope>compile</scope>
         </dependency>
 
     </dependencies>

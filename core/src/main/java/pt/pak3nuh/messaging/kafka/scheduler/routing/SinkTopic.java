@@ -2,6 +2,7 @@ package pt.pak3nuh.messaging.kafka.scheduler.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pt.pak3nuh.messaging.kafka.scheduler.ClientMessage;
 import pt.pak3nuh.messaging.kafka.scheduler.InternalMessage;
 import pt.pak3nuh.messaging.kafka.scheduler.MessageFailureHandler;
 import pt.pak3nuh.messaging.kafka.scheduler.SchedulerException;
@@ -32,15 +33,25 @@ final class SinkTopic implements Topic {
     public void send(InternalMessage content) {
         try {
             LOGGER.debug("Sending message with id {} to topic {}", content.getId(), destination);
-            LOGGER.trace("Message content {}", content);
-            if(deliverClient) {
-                producer.send(destination, content.getClientMessage());
+            if (deliverClient) {
+                final ClientMessage clientMessage = content.getClientMessage();
+                LOGGER.trace("Client message {}", clientMessage);
+                producer.send(destination, clientMessage);
             } else {
+                LOGGER.trace("Internal message {}", content);
                 producer.send(destination, content);
             }
 
         } catch (Exception ex) {
-            handler.handle(content.getClientMessage(), new SchedulerException(ex));
+            SchedulerException schedulerException;
+            if (ex instanceof SchedulerException) {
+                schedulerException = (SchedulerException) ex;
+            } else {
+                schedulerException = new SchedulerException("Can't produce message with id " + content.getId(), ex);
+            }
+
+            handler.handle(content.getClientMessage(), schedulerException);
+            throw schedulerException;
         }
     }
 }

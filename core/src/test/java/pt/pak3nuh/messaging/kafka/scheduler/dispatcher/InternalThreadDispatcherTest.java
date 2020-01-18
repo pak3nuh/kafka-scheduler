@@ -114,38 +114,6 @@ class InternalThreadDispatcherTest {
         assertEquals(1, work.toProcess.size());
     }
 
-    @Test
-    void shouldShortCircuitIfMessageIsToBeDelivered() {
-        Instant messageDeliveryTime = Instant.now();
-        InternalMessage readyMessage = create(messageDeliveryTime);
-        long seconds = DispatcherThread.secondsUntilProcess(readyMessage, Instant.MAX, messageDeliveryTime.minusSeconds(1));
-        assertTrue(seconds < 0);
-    }
-
-    @Test
-    void shouldWaitForDeliveryTime() {
-        Instant now = Instant.now();
-        Instant nowWithDelay = now.minusSeconds(5 * 60);
-        Instant deliveryTime = now.plusSeconds(1);
-        Instant creationTime = deliveryTime.plusSeconds(60);
-        InternalMessage readyMessage = create(deliveryTime, creationTime);
-        long seconds = DispatcherThread.secondsUntilProcess(readyMessage, nowWithDelay, now);
-        // difference between now and delivery time
-        assertEquals(1, seconds);
-    }
-
-    @Test
-    void shouldWaitForHoldTime() {
-        Instant now = Instant.now();
-        Instant nowWithDelay = now.minusSeconds(60);
-        Instant deliveryTime = now.plusSeconds(5);
-        Instant creationTime = nowWithDelay.plusSeconds(1);
-        InternalMessage readyMessage = create(deliveryTime, creationTime);
-        long seconds = DispatcherThread.secondsUntilProcess(readyMessage, nowWithDelay, now);
-        // difference between nowWithDelay and hold time
-        assertEquals(1, seconds);
-    }
-
     @Value
     private static class R implements Consumer.Record {
         InternalMessage message;
