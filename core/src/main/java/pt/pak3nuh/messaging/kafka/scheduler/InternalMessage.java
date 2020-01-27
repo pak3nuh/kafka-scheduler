@@ -50,7 +50,7 @@ public final class InternalMessage {
                 .putInstant(deliverAt)
                 .putInstant(createdAt)
                 .putInstant(clientMessage.getCreatedAt())
-                .putString(clientMessage.getSource())
+                .putBytes(clientMessage.getKey())
                 .putString(clientMessage.getDestination())
                 .putBytes(clientMessage.getContent())
                 .toBytes();
@@ -62,10 +62,10 @@ public final class InternalMessage {
         Instant deliverAt = reader.getInstant();
         Instant internalCreatedAt = reader.getInstant();
         Instant clientCreatedAt = reader.getInstant();
-        String source = reader.getString();
+        byte[] key = reader.getBytes();
         String destination = reader.getString();
         byte[] content = reader.getBytes();
         return new InternalMessage(id, deliverAt, internalCreatedAt,
-                new ClientMessage(clientCreatedAt, source, destination, content));
+                new ClientMessage(clientCreatedAt, key, destination, content));
     }
 }

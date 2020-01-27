@@ -6,19 +6,19 @@ import java.util.Objects;
 
 public class ClientMessage {
     private final Instant createdAt;
-    private final String source;
+    private final byte[] key;
     private final String destination;
     private final byte[] content;
 
-    public ClientMessage(Instant createdAt, String source, String destination, byte[] content) {
+    public ClientMessage(Instant createdAt, byte[] key, String destination, byte[] content) {
         this.createdAt = Objects.requireNonNull(createdAt);
-        this.source = Objects.requireNonNull(source);
+        this.key = Objects.requireNonNull(key);
         this.destination = Objects.requireNonNull(destination);
         this.content = Objects.requireNonNull(content);
     }
 
-    public ClientMessage(String source, String destination, byte[] content) {
-        this(Instant.now(), source, destination, content);
+    public ClientMessage(byte[] key, String destination, byte[] content) {
+        this(Instant.now(), key, destination, content);
     }
 
     /**
@@ -36,28 +36,17 @@ public class ClientMessage {
     }
 
     /**
-     * The content to be delivered.
+     * Expected message content on delivery to the {@link #getDestination()} topic.
      */
     public byte[] getContent() {
         return content;
     }
 
     /**
-     * <p>The source of the message. This field isn't handled by the library except for logging purposes</p>
+     * <p>Expected message key on delivery to the {@link #getDestination()} topic.</p>
      */
-    public String getSource() {
-        return source;
-    }
-
-    /**
-     * <p>Expected message id on delivery to the {@link #getDestination()} topic.</p>
-     * <p>This id serves for partitioning purposes only and its uniqueness isn't guaranteed.</p>
-     * <p>This may change in the future if partitioning becomes customizable.</p>
-     */
-    public String getId() {
-        int result = Objects.hash(source, destination);
-        result = 31 * result + Arrays.hashCode(content);
-        return String.valueOf(result);
+    public byte[] getKey() {
+        return key;
     }
 
     @Override
@@ -66,14 +55,14 @@ public class ClientMessage {
         if (o == null || getClass() != o.getClass()) return false;
         ClientMessage message = (ClientMessage) o;
         return Objects.equals(createdAt, message.createdAt) &&
-                Objects.equals(source, message.source) &&
+                Arrays.equals(key, message.key) &&
                 Objects.equals(destination, message.destination) &&
                 Arrays.equals(content, message.content);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(createdAt, source, destination);
+        int result = Objects.hash(createdAt, key, destination);
         result = 31 * result + Arrays.hashCode(content);
         return result;
     }
@@ -82,7 +71,7 @@ public class ClientMessage {
     public String toString() {
         return "Message{" +
                 "createdAt=" + createdAt +
-                ", source='" + source + '\'' +
+                ", key='" + Arrays.toString(key) + '\'' +
                 ", destination='" + destination + '\'' +
                 '}';
     }

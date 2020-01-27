@@ -41,7 +41,7 @@ public final class MessageWaiter implements AutoCloseable {
 
     public void enqueueMessage(String data, Instant arrival) {
         LOGGER.trace("Enqueuing data {} at {}", data, arrival);
-        ClientMessage clientMessage = new ClientMessage("message-waiter", destinationTopic, data.getBytes());
+        ClientMessage clientMessage = new ClientMessage("message-waiter".getBytes(), destinationTopic, data.getBytes());
         scheduler.enqueue(arrival, clientMessage);
         enqueued.put(data, new Data(data, arrival));
     }
