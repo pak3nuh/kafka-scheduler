@@ -10,7 +10,7 @@ public final class ConnectLiveKafka {
                 .appName("blah");
 
         try(Scheduler scheduler = builder.build()) {
-            ClientMessage clientMessage = new ClientMessage("blah-app", "destination-topic", new byte[0]);
+            ClientMessage clientMessage = new ClientMessage("blah-app".getBytes(), "destination-topic", new byte[0]);
             scheduler.enqueue(Instant.now().plusSeconds(120), clientMessage);
         }
     }

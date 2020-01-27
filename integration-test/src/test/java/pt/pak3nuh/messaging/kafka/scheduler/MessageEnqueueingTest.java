@@ -43,7 +43,7 @@ public final class MessageEnqueueingTest {
             scheduler.start();
             Instant timeToDeliver = Instant.now().plusSeconds(60);
             String payload = "payload";
-            scheduler.enqueue(timeToDeliver, new ClientMessage("blah", TOPIC, payload.getBytes()));
+            scheduler.enqueue(timeToDeliver, new ClientMessage("blah".getBytes(), TOPIC, payload.getBytes()));
             waitForResult(payload, timeToDeliver, scheduler.granularityInSeconds());
         }
     }

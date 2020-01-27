@@ -5,7 +5,6 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import pt.pak3nuh.messaging.kafka.scheduler.consumer.ConsumerFactory;
 import pt.pak3nuh.messaging.kafka.scheduler.dispatcher.InternalThreadDispatcher;
 import pt.pak3nuh.messaging.kafka.scheduler.producer.Producer;
@@ -61,7 +60,8 @@ public final class SchedulerBuilder {
     private Producer getProducer() {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-        return new ProducerImpl(new KafkaProducer<>(props, new StringSerializer(), new ByteArraySerializer()));
+        final ByteArraySerializer byteArraySerializer = new ByteArraySerializer();
+        return new ProducerImpl(new KafkaProducer<>(props, byteArraySerializer, byteArraySerializer));
     }
 
     public Scheduler build() {

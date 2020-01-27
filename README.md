@@ -10,8 +10,11 @@ it must be routed through these internal topics to be finally delivered to the c
 To enqueue a message for delivery we can use
 ```java
 Instant timeToDeliver = Instant.now().plusSeconds(60);
+String key = "key1";
+byte[] keyInBytes = key.getBytes();
 String payload = "payload";
-scheduler.enqueue(timeToDeliver, new ClientMessage("string client", "final-topic", payload.getBytes()));
+byte[] payloadInBytes = payload.getBytes();
+scheduler.enqueue(timeToDeliver, new ClientMessage(keyInBytes, "final-topic", payloadInBytes));
 ```
 
 The message will be delivered never before the `timeToDeliver` instant, but there are no guarantees over the exact
@@ -19,8 +22,8 @@ timing. Actual delivery delays depend on factors like service pressure, network 
 topic available. Because we can't loose messages, we also can't process them out of order and every message must
 respect the hold time associated with every topic.
 
-The client application can expect a message to be enqueued on `final-topic` topic with an internal id and the bytes
-of the `payload` string.
+The client application can expect a message to be enqueued on `final-topic` topic with `keyInBytes` as key and 
+`payloadInBytes` as content.
 
 ### Create a scheduler
 

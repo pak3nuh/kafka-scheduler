@@ -22,7 +22,7 @@ public final class InternalMessageFactory {
 
     public static InternalMessage create(Instant deliveryTime, Instant creationTime) {
         return new InternalMessage(0, deliveryTime, creationTime,
-                new ClientMessage(Instant.now(), "source", "destination", new byte[0]));
+                new ClientMessage(Instant.now(), "source".getBytes(), "destination", new byte[0]));
     }
 
     public static Stream<InternalMessage> createInternalMessageStream(int numberOfMessages, int minutes) {
