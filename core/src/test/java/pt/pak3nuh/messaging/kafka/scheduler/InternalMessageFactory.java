@@ -29,7 +29,7 @@ public final class InternalMessageFactory {
         ArrayList<InternalMessage> objects = new ArrayList<>(numberOfMessages);
         Instant delivery = Instant.now().plusSeconds(60 * minutes);
         for (int i = 0; i < numberOfMessages; i++) {
-            objects.add(create(delivery, Instant.now()));
+            objects.add(create(delivery, delivery));
         }
         return objects.stream();
     }

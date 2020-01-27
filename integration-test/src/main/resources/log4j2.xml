@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %c{1.} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+        <Logger name="pt.pak3nuh" level="trace"/>
+        <Logger name="org.apache.zookeeper" level="warn"/>
+        <Logger name="org.apache.kafka" level="warn"/>
+        <Logger name="kafka" level="warn"/>
+    </Loggers>
+</Configuration>

@@ -15,7 +15,6 @@ import org.mandas.kafka.KafkaCluster;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.TimeoutException;
 
@@ -23,16 +22,7 @@ import java.util.concurrent.TimeoutException;
 public final class MessageEnqueueingTest {
 
     private static final String TOPIC = "destination";
-    private static final KafkaCluster cluster;
-
-    static {
-        HashMap<String, Object> properties = new HashMap<>();
-        properties.put("auto.create.topics.enable", true);
-        cluster = KafkaCluster.builder()
-                .withZookeeper("127.0.0.1", 2181, 2182)
-                .withBroker(1, "127.0.0.1", 9092, 9093, properties)
-                .build();
-    }
+    private static final KafkaCluster cluster = MemoryClusterFactory.create();
 
     @BeforeAll
     static void beforeAll() {

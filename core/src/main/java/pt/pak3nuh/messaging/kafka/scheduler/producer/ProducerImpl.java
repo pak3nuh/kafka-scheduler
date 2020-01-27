@@ -12,6 +12,7 @@ import java.util.concurrent.Future;
 public class ProducerImpl implements Producer {
 
     private final org.apache.kafka.clients.producer.Producer<String, byte[]> producer;
+    private volatile boolean closed = false;
 
     public ProducerImpl(org.apache.kafka.clients.producer.Producer<String, byte[]> producer) {
         this.producer = producer;
@@ -19,12 +20,14 @@ public class ProducerImpl implements Producer {
 
     @Override
     public void send(String topic, InternalMessage content) {
+        checkClosed();
         Future<RecordMetadata> future = producer.send(new ProducerRecord<>(topic, String.valueOf(content.getId()), content.toBytes()));
         waitFor(future);
     }
 
     @Override
     public void send(String topic, ClientMessage content) {
+        checkClosed();
         Future<RecordMetadata> future = producer.send(new ProducerRecord<>(topic, content.getId(), content.getContent()));
         waitFor(future);
     }
@@ -37,8 +40,15 @@ public class ProducerImpl implements Producer {
         }
     }
 
+    private void checkClosed() {
+        if (closed) {
+            throw new ProducerClosedException();
+        }
+    }
+
     @Override
     public void close() {
+        closed = true;
         producer.close();
     }
 }
