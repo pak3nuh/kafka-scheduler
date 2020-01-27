@@ -53,16 +53,17 @@ public class ClientMessage {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ClientMessage message = (ClientMessage) o;
-        return Objects.equals(createdAt, message.createdAt) &&
-                Arrays.equals(key, message.key) &&
-                Objects.equals(destination, message.destination) &&
-                Arrays.equals(content, message.content);
+        ClientMessage that = (ClientMessage) o;
+        return Objects.equals(createdAt, that.createdAt) &&
+                Arrays.equals(key, that.key) &&
+                Objects.equals(destination, that.destination) &&
+                Arrays.equals(content, that.content);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(createdAt, key, destination);
+        int result = Objects.hash(createdAt, destination);
+        result = 31 * result + Arrays.hashCode(key);
         result = 31 * result + Arrays.hashCode(content);
         return result;
     }
