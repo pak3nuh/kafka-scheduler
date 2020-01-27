@@ -1,4 +1,6 @@
 *.iml
 .idea/
 target/
+build/
+.gradle/
 pom.xml.versionsBackup
